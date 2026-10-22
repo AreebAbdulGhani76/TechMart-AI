@@ -1,0 +1,182 @@
+[
+  {
+    "Category":"Laptop",
+    "Brand":"Apple",
+    "Model Name":"MacBook Air M3",
+    "Key Specifications":"13.6\", Apple M3, 16GB RAM, 512GB SSD",
+    "Best For":"Students & Professionals",
+    "price":799.99,
+    "stock":8
+  },
+  {
+    "Category":"Laptop",
+    "Brand":"Dell",
+    "Model Name":"XPS 15 9530",
+    "Key Specifications":"Intel Core i7, RTX 4050, 16GB RAM",
+    "Best For":"Creators & Office Work",
+    "price":149.99,
+    "stock":0
+  },
+  {
+    "Category":"Laptop",
+    "Brand":"Lenovo",
+    "Model Name":"Legion Pro 5",
+    "Key Specifications":"Ryzen 9, RTX 4070, 32GB RAM",
+    "Best For":"Gaming",
+    "price":499.99,
+    "stock":15
+  },
+  {
+    "Category":"Laptop",
+    "Brand":"HP",
+    "Model Name":"Spectre x360 14",
+    "Key Specifications":"OLED Touchscreen, Intel Evo",
+    "Best For":"Business & Travel",
+    "price":329.99,
+    "stock":4
+  },
+  {
+    "Category":"Headphones",
+    "Brand":"Sony",
+    "Model Name":"WH-1000XM5",
+    "Key Specifications":"Noise Cancelling, 30hr Battery",
+    "Best For":"Music & Travel",
+    "price":59.99,
+    "stock":22
+  },
+  {
+    "Category":"Headphones",
+    "Brand":"Apple",
+    "Model Name":"AirPods Max",
+    "Key Specifications":"Spatial Audio, Premium Build",
+    "Best For":"Apple Ecosystem",
+    "price":29.99,
+    "stock":35
+  },
+  {
+    "Category":"Headphones",
+    "Brand":"Bose",
+    "Model Name":"QuietComfort Ultra",
+    "Key Specifications":"ANC, Comfortable Fit",
+    "Best For":"Frequent Travelers",
+    "price":799.99,
+    "stock":8
+  },
+  {
+    "Category":"Phone",
+    "Brand":"Samsung",
+    "Model Name":"Galaxy S25 Ultra",
+    "Key Specifications":"Snapdragon 8 Gen 4, 200MP Camera",
+    "Best For":"Photography",
+    "price":149.99,
+    "stock":0
+  },
+  {
+    "Category":"Phone",
+    "Brand":"Apple",
+    "Model Name":"iPhone 16 Pro Max",
+    "Key Specifications":"A18 Pro Chip, Titanium Design",
+    "Best For":"Premium Users",
+    "price":499.99,
+    "stock":15
+  },
+  {
+    "Category":"Phone",
+    "Brand":"Google",
+    "Model Name":"Pixel 9 Pro",
+    "Key Specifications":"AI Features, Excellent Camera",
+    "Best For":"Android Users",
+    "price":329.99,
+    "stock":4
+  },
+  {
+    "Category":"Phone",
+    "Brand":"OnePlus",
+    "Model Name":"OnePlus 13",
+    "Key Specifications":"Fast Charging, AMOLED Display",
+    "Best For":"Performance",
+    "price":59.99,
+    "stock":22
+  },
+  {
+    "Category":"Tablet",
+    "Brand":"Apple",
+    "Model Name":"iPad Pro M4",
+    "Key Specifications":"OLED Display, Apple Pencil Pro",
+    "Best For":"Designers",
+    "price":29.99,
+    "stock":35
+  },
+  {
+    "Category":"Tablet",
+    "Brand":"Samsung",
+    "Model Name":"Galaxy Tab S10 Ultra",
+    "Key Specifications":"14.6\" AMOLED, S-Pen",
+    "Best For":"Entertainment",
+    "price":799.99,
+    "stock":8
+  },
+  {
+    "Category":"Tablet",
+    "Brand":"Xiaomi",
+    "Model Name":"Pad 7 Pro",
+    "Key Specifications":"Snapdragon Processor, 144Hz",
+    "Best For":"Budget Premium",
+    "price":149.99,
+    "stock":0
+  },
+  {
+    "Category":"Keyboard",
+    "Brand":"Logitech",
+    "Model Name":"MX Keys S",
+    "Key Specifications":"Wireless, Backlit Keys",
+    "Best For":"Productivity",
+    "price":499.99,
+    "stock":15
+  },
+  {
+    "Category":"Keyboard",
+    "Brand":"Keychron",
+    "Model Name":"Keychron K8 Pro",
+    "Key Specifications":"Mechanical, Hot-Swappable",
+    "Best For":"Programmers",
+    "price":329.99,
+    "stock":4
+  },
+  {
+    "Category":"Keyboard",
+    "Brand":"Razer",
+    "Model Name":"BlackWidow V4",
+    "Key Specifications":"RGB Mechanical Keyboard",
+    "Best For":"Gamers",
+    "price":59.99,
+    "stock":22
+  },
+  {
+    "Category":"Mouse",
+    "Brand":"Logitech",
+    "Model Name":"MX Master 3S",
+    "Key Specifications":"Ergonomic, Silent Clicks",
+    "Best For":"Office & Editing",
+    "price":29.99,
+    "stock":35
+  },
+  {
+    "Category":"Mouse",
+    "Brand":"Razer",
+    "Model Name":"DeathAdder V3 Pro",
+    "Key Specifications":"Lightweight, Wireless Gaming",
+    "Best For":"Esports",
+    "price":499.99,
+    "stock":4
+  },
+  {
+    "Category":"Mouse",
+    "Brand":"SteelSeries",
+    "Model Name":"Aerox 5 Wireless",
+    "Key Specifications":"Ultra-Lightweight, RGB",
+    "Best For":"Gaming & Streaming",
+    "price":329.99,
+    "stock":22
+  }
+]

@@ -1,0 +1,28 @@
+# Environment & Secret API Keys
+.env
+*.env
+.env.local
+
+# Python Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.ipynb_checkpoints/
+
+# ChromaDB Vector Store
+chroma_db/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# IDE & OS Artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
