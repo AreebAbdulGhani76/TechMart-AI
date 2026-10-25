@@ -189,7 +189,8 @@ Return JSON:
 REQUIRED RESPONSE:
 1. Warmly congratulate ${newOrderCreated.customer} on placing their new order!
 2. Confirm their new Order ID (${newOrderCreated.order_id}), exact Model Name (${newOrderCreated.model_name}), and price ($${newOrderCreated.price.toFixed(2)}).
-3. Confirm that standard delivery takes 3-5 business days.`;
+3. Confirm that standard delivery takes 3-5 business days.
+${newOrderCreated.email ? `4. Inform them that an automated order confirmation email has been dispatched to ${newOrderCreated.email} (Ref: ${newOrderCreated.email_reference || 'CONFIRMED'}).${newOrderCreated.preview_url ? ` Share this email preview link if they wish to inspect it right away: ${newOrderCreated.preview_url}` : ''}` : ''}`;
       } else if (oData.is_ordering && oData.product_model && !oData.customer_name) {
         orderPlacementContext = `[CUSTOMER ORDER IN PROGRESS - NAME NEEDED]:
 The customer wants to purchase: ${oData.product_model}.

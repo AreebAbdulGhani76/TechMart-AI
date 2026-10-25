@@ -1624,6 +1624,31 @@ export default function HomePage() {
                       Order ID: <strong>{orderSuccessBanner.order_id}</strong> • Customer:{' '}
                       {orderSuccessBanner.customer} • Model: {orderSuccessBanner.model_name}
                     </div>
+                    {orderSuccessBanner.email && (
+                      <div style={{ marginTop: '4px', fontSize: '12px', color: '#cbd5e1' }}>
+                        📧 Confirmation email dispatched to <strong>{orderSuccessBanner.email}</strong>
+                      </div>
+                    )}
+                    {orderSuccessBanner.preview_url && (
+                      <div style={{ marginTop: '6px' }}>
+                        <a
+                          href={orderSuccessBanner.preview_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: '#38bdf8',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            textDecoration: 'underline',
+                          }}
+                        >
+                          ✉️ Click to View Dispatched Email Preview
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { google } from 'googleapis';
 import * as XLSX from 'xlsx';
-import { sendRefundConfirmationEmail } from './email';
+import { sendRefundConfirmationEmail, sendOrderConfirmationEmail } from './email';
 
 export const PRODUCTS_SHEET_ID = process.env.PRODUCTS_SHEET_ID || '1RZ1U4TKfqqjY4kpbvFUQOJd_PwDlYp0I';
 export const ORDERS_SHEET_ID = process.env.ORDERS_SHEET_ID || '18G2BQlwSihkgC5JcCFosbMVEbSQBQE_hgvKpFogcWCI';
@@ -226,6 +226,23 @@ export async function createOrder(customer: string, modelName: string, email?: s
     requestBody: { values: [row] },
   });
 
+  // Automated order confirmation email dispatch
+  let emailResult = null;
+  if (customerEmail && customerEmail.includes('@')) {
+    try {
+      emailResult = await sendOrderConfirmationEmail({
+        orderId: nextOrderId,
+        customer: customer.trim(),
+        modelName: resolvedModel,
+        category: resolvedCategory,
+        price,
+        customerEmail,
+      });
+    } catch (err) {
+      console.warn('[ORDER EMAIL DISPATCH ERROR]:', err);
+    }
+  }
+
   return {
     success: appendRes.status === 200,
     order_id: nextOrderId,
@@ -237,6 +254,9 @@ export async function createOrder(customer: string, modelName: string, email?: s
     stock,
     status: 'Order Placed',
     email: customerEmail,
+    email_status: emailResult?.status,
+    email_reference: emailResult?.reference,
+    preview_url: emailResult?.previewUrl || '',
   };
 }
 
