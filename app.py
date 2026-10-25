@@ -1,6 +1,10 @@
 """
-TechMart AI Assistant — Enterprise Streamlit RAG Application
-Grounds Google Gemini LLM in real-time product catalogs and store policies via ChromaDB.
+TechMart AI Agent — Enterprise Streamlit RAG Platform
+Powered by Google Gemini 3.8 Flash & ChromaDB.
+Integrates live Google Sheets for:
+- Products catalog: 1RZ1U4TKfqqjY4kpbvFUQOJd_PwDlYp0I
+- Orders database: 18G2BQlwSihkgC5JcCFosbMVEbSQBQE_hgvKpFogcWCI
+- Bank details collection: 1gWgVsSVU4u1V8qTcEIKj7F81XxY02Y-0sJCdc-J6gNg
 """
 
 import os
@@ -14,10 +18,10 @@ _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _ENV_FILE = os.path.join(_BASE_DIR, ".env")
 load_dotenv(_ENV_FILE)
 
-
-# Import RAG engine functions
+# Import RAG engine and Google Sheets service
+import sheets_service
 from rag_engine import (
-    prepare_all_documents,
+    load_and_chunk_policy,
     get_vectorstore,
     get_llm,
     answer_query,
@@ -30,7 +34,7 @@ from rag_engine import (
 # Page Configuration
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="TechMart AI Assistant | RAG Platform",
+    page_title="TechMart AI Agent | Sales, Support & Refunds",
     page_icon="🛍️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -49,28 +53,28 @@ html, body, [class*="css"], [data-testid="stAppViewContainer"] {
 
 /* Main Container Padding */
 .main .block-container {
-    padding-top: 1.8rem;
+    padding-top: 1.5rem;
     padding-bottom: 3rem;
-    max-width: 1200px;
+    max-width: 1250px;
 }
 
 /* Header Banner */
 .hero-banner {
-    background: linear-gradient(135deg, #09090b 0%, #18181b 100%);
-    border: 1px solid #27272a;
+    background: linear-gradient(135deg, #09090b 0%, #1e1b4b 50%, #0f172a 100%);
+    border: 1px solid #312e81;
     border-radius: 16px;
-    padding: 26px 32px;
-    margin-bottom: 24px;
+    padding: 24px 30px;
+    margin-bottom: 20px;
     color: #ffffff;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
 }
 
 .hero-pill {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     color: #f4f4f5;
     padding: 4px 12px;
     border-radius: 9999px;
@@ -82,7 +86,7 @@ html, body, [class*="css"], [data-testid="stAppViewContainer"] {
 }
 
 .hero-title {
-    font-size: 2.1rem;
+    font-size: 2.0rem;
     font-weight: 800;
     letter-spacing: -0.03em;
     margin: 0 0 6px 0;
@@ -91,205 +95,140 @@ html, body, [class*="css"], [data-testid="stAppViewContainer"] {
 
 .hero-subtitle {
     font-size: 0.95rem;
-    color: #a1a1aa;
+    color: #cbd5e1;
     margin: 0;
-    max-width: 720px;
+    max-width: 780px;
     line-height: 1.5;
 }
 
 /* Stat Cards */
 .stat-card {
     background: #ffffff;
-    border: 1px solid #e4e4e7;
-    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
     padding: 16px 20px;
-    box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-
 .stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08);
-    border-color: #09090b;
+    box-shadow: 0 6px 16px -2px rgba(0, 0, 0, 0.08);
 }
-
 .stat-val {
-    font-size: 1.85rem;
+    font-size: 1.6rem;
     font-weight: 800;
-    color: #09090b;
-    line-height: 1.2;
+    color: #0f172a;
+    letter-spacing: -0.02em;
 }
-
 .stat-label {
     font-size: 0.76rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #71717a;
+    letter-spacing: 0.5px;
+    color: #64748b;
     margin-top: 4px;
 }
 
 /* Product Cards */
 .product-card {
     background: #ffffff;
-    border: 1px solid #e4e4e7;
-    border-radius: 14px;
-    padding: 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 14px;
+    height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 290px;
-    box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
-    transition: all 0.2s ease-in-out;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
-
 .product-card:hover {
-    border-color: #09090b;
-    box-shadow: 0 10px 24px -6px rgba(0, 0, 0, 0.1);
-    transform: translateY(-3px);
-}
-
-.badge-category {
-    display: inline-block;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    background: #f4f4f5;
-    color: #18181b;
-    padding: 3px 8px;
-    border-radius: 6px;
-    border: 1px solid #e4e4e7;
+    border-color: #6366f1;
+    box-shadow: 0 8px 20px -4px rgba(99, 102, 241, 0.12);
 }
 
 .product-title {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 700;
-    color: #09090b;
-    margin: 8px 0 6px 0;
+    color: #0f172a;
+    margin: 6px 0 4px 0;
 }
 
-.product-specs {
-    font-size: 0.83rem;
-    color: #52525b;
-    line-height: 1.45;
-    margin-bottom: 8px;
+.badge-category {
+    background: #eef2ff;
+    color: #4338ca;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
 }
 
-.product-bestfor {
-    font-size: 0.8rem;
-    color: #71717a;
-    margin-bottom: 12px;
+.stock-badge-in {
+    background: #ecfdf5;
+    color: #047857;
+    font-weight: 700;
+    font-size: 0.76rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-block;
+}
+.stock-badge-out {
+    background: #fef2f2;
+    color: #b91c1c;
+    font-weight: 700;
+    font-size: 0.76rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-block;
 }
 
 .price-tag {
     font-size: 1.25rem;
     font-weight: 800;
-    color: #09090b;
+    color: #0f172a;
 }
 
-.stock-badge-in {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: #059669;
+/* Decision Badges */
+.eligible-box {
     background: #ecfdf5;
-    padding: 3px 8px;
-    border-radius: 9999px;
-    border: 1px solid #a7f3d0;
-}
-
-.stock-badge-out {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: #dc2626;
-    background: #fef2f2;
-    padding: 3px 8px;
-    border-radius: 9999px;
-    border: 1px solid #fecaca;
-}
-
-/* Source Reference Card */
-.source-card {
-    background: #fafafa;
-    border: 1px solid #e4e4e7;
-    border-left: 3px solid #09090b;
-    border-radius: 8px;
-    padding: 12px 14px;
-    margin-top: 6px;
-    margin-bottom: 6px;
-    font-size: 0.84rem;
-}
-
-.source-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 700;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    color: #09090b;
-    margin-bottom: 4px;
-}
-
-/* Policy Card */
-.policy-card {
-    background: #ffffff;
-    border: 1px solid #e4e4e7;
+    border: 1.5px solid #10b981;
     border-radius: 12px;
-    padding: 18px 22px;
-    margin-bottom: 14px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    color: #064e3b;
 }
 
-.policy-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #09090b;
-    margin-bottom: 8px;
-}
-
-.policy-body {
-    font-size: 0.9rem;
-    color: #3f3f46;
-    line-height: 1.6;
+.ineligible-box {
+    background: #fef2f2;
+    border: 1.5px solid #ef4444;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    color: #7f1d1d;
 }
 
 /* Quick Reference Chips */
 .quick-chip {
     background: #ffffff;
-    border: 1px solid #e4e4e7;
+    border: 1px solid #e2e8f0;
     border-radius: 10px;
     padding: 12px 16px;
     text-align: center;
 }
-
 .quick-chip-val {
     font-size: 1.15rem;
     font-weight: 800;
     color: #09090b;
 }
-
 .quick-chip-lbl {
     font-size: 0.74rem;
-    color: #71717a;
+    color: #64748b;
     font-weight: 600;
     text-transform: uppercase;
     margin-top: 2px;
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-::-webkit-scrollbar-thumb {
-    background: #d4d4d8;
-    border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: #a1a1aa;
 }
 </style>
 """
@@ -298,21 +237,28 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
 # Cached Resource Loaders
-# ---------------------------------------------------------
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=60)
 def load_all_cached_data():
-    """Caches document and DataFrame loading to make app instant."""
-    policy_chunks, product_docs, all_docs, df_products = prepare_all_documents()
-    return policy_chunks, product_docs, all_docs, df_products
+    """Loads policy chunks and live Google Sheets products DataFrame."""
+    policy_chunks = load_and_chunk_policy("policy.txt")
+    df_products = sheets_service.fetch_products_dataframe()
+    return policy_chunks, df_products
 
 
-def get_cached_vs(api_key: str, force_rebuild: bool = False):
-    """Initializes or loads Chroma vectorstore with caching."""
+@st.cache_resource(show_spinner=False)
+def get_cached_vs(api_key: str):
+    """Initializes and caches Chroma vectorstore in RAM for instant queries."""
     return get_vectorstore(
         api_key=api_key,
         persist_directory=DEFAULT_CHROMA_DIR,
-        force_rebuild=force_rebuild
+        force_rebuild=False
     )
+
+
+@st.cache_resource(show_spinner=False)
+def get_cached_llm(api_key: str, model_name: str, temperature: float):
+    """Caches LLM instance to avoid re-instantiation."""
+    return get_llm(api_key=api_key, model_name=model_name, temperature=temperature)
 
 
 # ---------------------------------------------------------
@@ -348,26 +294,25 @@ with st.sidebar:
     st.markdown("### 🧠 Model & Retrieval")
 
     model_options = [
+        "gemini-3.5-flash-lite",
         "gemini-3.5-flash",
-        "gemini-3.8-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro"
+        "gemini-3.8-flash"
     ]
     model_choice = st.selectbox(
         "Gemini Model",
         options=model_options,
         index=0,
-        help="Gemini 3.5 Flash is selected by default for fast, grounded RAG responses."
+        help="Gemini 3.5 Flash Lite is selected by default for ultra-fast, 1-2 second responses."
     )
 
     use_streaming = st.toggle("⚡ Real-time Token Streaming", value=True, help="Stream answers word-by-word.")
+    show_sources = st.toggle("🔍 Show Grounded Sources", value=False, help="Display retrieved knowledge chunks below responses (disabled by default).")
 
     temperature = st.slider(
         "Temperature",
         min_value=0.0,
         max_value=1.0,
-        value=0.3,
+        value=0.2,
         step=0.05,
         help="Lower values produce more deterministic, fact-grounded responses."
     )
@@ -382,35 +327,43 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    st.markdown("### 🗄️ Knowledge Base Telemetry")
+    st.markdown("### ☁️ Google Sheets Telemetry")
 
     try:
-        policy_chunks, product_docs, all_docs, df_products = load_all_cached_data()
+        policy_chunks, df_products = load_all_cached_data()
         in_stock_count = int((df_products["stock"] > 0).sum()) if df_products is not None else 0
+        orders_data = sheets_service.fetch_orders()
+        bank_data = sheets_service.fetch_bank_details()
 
         st.markdown(f"""
-        - 📦 **Products in Catalog**: `{len(df_products)}`
-        - 🟢 **In-Stock SKUs**: `{in_stock_count}`
-        - 📜 **Policy Clauses**: `{len(policy_chunks)} chunks`
-        - 📚 **Total Embeddings**: `{len(all_docs)} items`
-        - 🏷️ **Collection**: `{COLLECTION_NAME}`
+        - 📦 **Products in Live Sheet**: `{len(df_products)} SKUs` *(Real-Time)*
+        - 🟢 **In-Stock Units**: `{in_stock_count}`
+        - 📋 **Live Orders**: `{len(orders_data)} orders`
+        - 💳 **Bank Records**: `{len(bank_data)} entries`
+        - 📜 **Policy Clauses in ChromaDB**: `{len(policy_chunks)} chunks`
+        - 🏷️ **Policy Collection**: `{COLLECTION_NAME}`
         """)
     except Exception as e:
         st.error(f"Error loading telemetry: {e}")
 
     # Reindex Vector Database Action
     if active_api_key:
-        if st.button("🔄 Sync / Rebuild ChromaDB", use_container_width=True, help="Force re-embed and index all documents"):
-            with st.spinner("Re-indexing documents into ChromaDB..."):
+        if st.button("🔄 Sync Live Sheets to ChromaDB", use_container_width=True, help="Force re-fetch Google Sheets and re-embed all documents"):
+            with st.spinner("Re-fetching Google Sheets and rebuilding ChromaDB index..."):
                 try:
-                    vs, count = get_cached_vs(active_api_key, force_rebuild=True)
+                    load_all_cached_data.clear()
+                    get_cached_vs.clear()
+                    sheets_service.clear_cache()
+                    vs, count = get_vectorstore(api_key=active_api_key, force_rebuild=True)
                     st.success(f"Indexed {count} documents into ChromaDB!")
+                    st.rerun()
                 except Exception as ex:
                     st.error(f"Failed to rebuild index: {ex}")
 
     st.markdown("---")
     if st.button("🗑️ Clear Chat History", use_container_width=True):
         st.session_state["messages"] = []
+        st.session_state["active_refund_order"] = None
         st.rerun()
 
 
@@ -419,11 +372,11 @@ with st.sidebar:
 # ---------------------------------------------------------
 st.markdown("""
 <div class="hero-banner">
-    <div class="hero-pill">⚡ TechMart Enterprise RAG Platform</div>
-    <h1 class="hero-title">AI Sales & Policy Assistant</h1>
+    <div class="hero-pill">🤖 Autonomous AI Sales & Refund Agent</div>
+    <h1 class="hero-title">TechMart AI Assistant</h1>
     <p class="hero-subtitle">
-        Grounding intelligent customer interactions in live catalog specifications, real-time stock levels,
-        and official company policies using ChromaDB dense vector retrieval and Google Gemini.
+        Intelligent customer assistant grounded in Google Sheets catalog & orders.
+        Answers sales inquiries, evaluates refund eligibility based on store policy, and securely collects banking information.
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -433,18 +386,19 @@ st.markdown("""
 # Key Performance Metrics Row
 # ---------------------------------------------------------
 try:
-    policy_chunks, product_docs, all_docs, df_products = load_all_cached_data()
+    policy_chunks, df_products = load_all_cached_data()
     m1, m2, m3, m4 = st.columns(4)
 
     total_prods = len(df_products)
     in_stock_total = int((df_products["stock"] > 0).sum())
     total_clauses = len(policy_chunks)
+    orders_count = len(sheets_service.fetch_orders())
 
     with m1:
         st.markdown(f"""
         <div class="stat-card">
             <div class="stat-val">{total_prods}</div>
-            <div class="stat-label">Total Products</div>
+            <div class="stat-label">Google Sheets SKUs</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -459,16 +413,16 @@ try:
     with m3:
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-val" style="color: #2563eb;">{total_clauses}</div>
-            <div class="stat-label">Policy Clauses</div>
+            <div class="stat-val" style="color: #4f46e5;">{orders_count}</div>
+            <div class="stat-label">Live Orders</div>
         </div>
         """, unsafe_allow_html=True)
 
     with m4:
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-val" style="color: #7c3aed;">Chroma</div>
-            <div class="stat-label">Vector Store</div>
+            <div class="stat-val" style="color: #7c3aed;">Chroma + Sheets</div>
+            <div class="stat-label">RAG Architecture</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -481,26 +435,32 @@ st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 # ---------------------------------------------------------
 # Tabbed Navigation
 # ---------------------------------------------------------
-tab_chat, tab_catalog, tab_policies = st.tabs([
-    "💬 Chat with Charlie (AI Assistant)",
-    "📦 Product Catalog Explorer",
+tab_chat, tab_refund, tab_catalog, tab_policies = st.tabs([
+    "💬 Chat with Charlie (AI Agent)",
+    "🛒 Orders & Refunds Agent (Google Sheets)",
+    "📦 Live Product Catalog (Google Sheets)",
     "📜 Store Policies & FAQ"
 ])
 
-# Initialize session state for messages
+# Initialize session state for messages and active refund order
 if "messages" not in st.session_state:
     st.session_state["messages"] = [
         {
             "role": "assistant",
             "content": (
-                "👋 Hello! I'm **Charlie**, your TechMart sales and customer support specialist.\n\n"
-                "I can help you check real-time product availability, compare specifications, find recommendations, "
-                "or answer questions regarding our **return policy**, **shipping options**, and **warranties**.\n\n"
-                "What can I help you find today?"
+                "👋 Hello! I'm **Charlie**, your TechMart AI Sales, Order, and Refund Agent.\n\n"
+                "I can help you:\n"
+                "1. 🛍️ **Explore Products & Place Orders**: Check specs, real-time prices, and place an order directly for any model (e.g. *'I want to buy the MacBook Air M3, my name is Ali'*).\n"
+                "2. 🔄 **Check Refund Eligibility**: Just give me your **Order ID** (e.g. `ORD-101`, `ORD-104`), and I'll verify if your order is eligible under our return policy.\n"
+                "3. 💳 **Process Your Refund**: If eligible, I'll securely collect your banking details to disburse your refund.\n\n"
+                "What can I assist you with today?"
             ),
             "sources": []
         }
     ]
+
+if "active_refund_order" not in st.session_state:
+    st.session_state["active_refund_order"] = None
 
 
 # ---------------------------------------------------------
@@ -513,17 +473,17 @@ with tab_chat:
 
     preset_query = None
     with q1:
-        if st.button("💻 Student laptops under $1,000", key="chip_q1", use_container_width=True):
-            preset_query = "What laptops do you recommend for students under $1000 and are they currently in stock?"
+        if st.button("🛒 Order: MacBook Air M3", key="chip_q1", use_container_width=True):
+            preset_query = "I would like to order the MacBook Air M3. My name is Hamza."
     with q2:
-        if st.button("🔄 Return policy for laptops", key="chip_q2", use_container_width=True):
-            preset_query = "What is the return policy for electronics like laptops and tablets? How many days do I have?"
+        if st.button("🔄 Check Refund: ORD-101", key="chip_q2", use_container_width=True):
+            preset_query = "Can I get a refund for order ORD-101? Is it eligible?"
     with q3:
-        if st.button("🎧 Noise cancelling headphones", key="chip_q3", use_container_width=True):
-            preset_query = "What noise-cancelling headphones do you carry, what are their prices, and are they in stock?"
+        if st.button("❌ Check Refund: ORD-104", key="chip_q3", use_container_width=True):
+            preset_query = "I would like to request a refund for order ORD-104."
     with q4:
-        if st.button("🚚 Free shipping requirements", key="chip_q4", use_container_width=True):
-            preset_query = "How much do I need to spend for free shipping, and how long does standard delivery take?"
+        if st.button("🚚 Shipping & Return Policy", key="chip_q4", use_container_width=True):
+            preset_query = "What is the return window for electronics, and how much is shipping?"
 
     # Check if a product inquiry was triggered from the Catalog tab
     if "pending_query" in st.session_state and st.session_state["pending_query"]:
@@ -538,16 +498,15 @@ with tab_chat:
         with st.chat_message(msg["role"], avatar="🧑‍💻" if is_user else "🛍️"):
             st.markdown(msg["content"])
 
-            # Render Grounded Sources if available
+            # Render Grounded Sources if enabled in settings
             sources = msg.get("sources", [])
-            if sources and not is_user:
+            if show_sources and sources and not is_user:
                 with st.expander(f"🔍 Grounded Knowledge Sources ({len(sources)} chunks retrieved)", expanded=False):
                     for s_idx, doc in enumerate(sources):
                         meta = doc.get("metadata", {}) if isinstance(doc, dict) else getattr(doc, "metadata", {})
                         content = doc.get("page_content", "") if isinstance(doc, dict) else getattr(doc, "page_content", "")
                         doc_type = meta.get("doc_type", "document").upper()
                         source_file = meta.get("source", "knowledge_base")
-
                         badge_color = "#059669" if doc_type == "PRODUCT" else "#2563eb"
 
                         st.markdown(f"""
@@ -557,7 +516,6 @@ with tab_chat:
                                 <span>Source: {source_file}</span>
                                 {f"<span>· Brand: {meta.get('brand')}</span>" if 'brand' in meta else ""}
                                 {f"<span>· Model: {meta.get('model')}</span>" if 'model' in meta else ""}
-                                {f"<span>· Section: {meta.get('section')}</span>" if 'section' in meta else ""}
                             </div>
                             <div style="color: #3f3f46; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; white-space: pre-wrap; line-height: 1.4;">
 {content.strip()}
@@ -565,8 +523,64 @@ with tab_chat:
                         </div>
                         """, unsafe_allow_html=True)
 
+    # Interactive Banking Details Widget (if an eligible refund order is active)
+    active_ord = st.session_state.get("active_refund_order")
+    if active_ord and active_ord.get("eligible"):
+        with st.expander("💳 **Quick Bank Details Form for " + str(active_ord.get('order_id')) + "** (Click to submit)", expanded=True):
+            st.info(f"Order **{active_ord.get('order_id')}** ({active_ord.get('model_name')}) is eligible for refund. Fill details below or simply type them in chat!")
+            bf_c1, bf_c2, bf_c3 = st.columns(3)
+            with bf_c1:
+                in_bank = st.text_input("Bank Name", placeholder="e.g. Meezan Bank, Chase, HBL", key="chat_bank_name")
+            with bf_c2:
+                in_acc = st.text_input("Account Number / IBAN", placeholder="e.g. 9876543210", key="chat_acc_num")
+            with bf_c3:
+                in_mob = st.text_input("Mobile Number", placeholder="e.g. 03001234567", key="chat_mob_num")
+
+            if st.button("🚀 Submit Banking Information", key="btn_submit_chat_bank", use_container_width=True):
+                if in_bank and in_acc and in_mob:
+                    res = sheets_service.submit_bank_details(
+                        order_id=active_ord.get("order_id"),
+                        customer=active_ord.get("customer", "Customer"),
+                        product=active_ord.get("model_name", "Item"),
+                        bank_name=in_bank,
+                        account_number=in_acc,
+                        mobile_number=in_mob
+                    )
+                    sa_email = sheets_service.get_service_account_email()
+                    if res.get("sheet_synced"):
+                        confirm_text = (
+                            f"🎉 **Banking Information Recorded & Synced to Google Sheets!**\n"
+                            f"- **Order ID:** {active_ord.get('order_id')}\n"
+                            f"- **Bank:** {in_bank}\n"
+                            f"- **Account:** {in_acc}\n"
+                            f"- **Mobile:** {in_mob}\n\n"
+                            f"Your refund has been approved and will be processed within 5 business days."
+                        )
+                        st.success(f"✅ Banking details for Order {active_ord.get('order_id')} synced to Google Sheets!")
+                    else:
+                        confirm_text = (
+                            f"🎉 **Banking Information Recorded!**\n"
+                            f"- **Order ID:** {active_ord.get('order_id')}\n"
+                            f"- **Bank:** {in_bank}\n"
+                            f"- **Account:** {in_acc}\n"
+                            f"- **Mobile:** {in_mob}\n\n"
+                            f"⚠️ **Note for Google Sheets Sync:** Your details are saved securely, but could not be written to the Google Sheet because `{sa_email}` has 'Viewer' access. "
+                            f"Please grant **Editor** access to `{sa_email}` in Google Sheets Share settings."
+                        )
+                        st.warning(f"⚠️ Saved locally. Grant 'Editor' access to `{sa_email}` in Google Sheets to sync to cloud.")
+
+                    st.session_state["messages"].append({
+                        "role": "assistant",
+                        "content": confirm_text,
+                        "sources": []
+                    })
+                    st.session_state["active_refund_order"] = None
+                    st.rerun()
+                else:
+                    st.warning("Please fill in all three fields: Bank Name, Account Number, and Mobile Number.")
+
     # Chat Input Box
-    user_prompt = st.chat_input("Ask Charlie about products, specs, stock availability, or policies...")
+    user_prompt = st.chat_input("Ask Charlie about products, refund eligibility (e.g. ORD-101), or enter bank details...")
     active_prompt = preset_query or user_prompt
 
     if active_prompt:
@@ -590,20 +604,27 @@ with tab_chat:
 
                 try:
                     vectorstore, _ = get_cached_vs(active_api_key)
-                    llm = get_llm(
+                    llm = get_cached_llm(
                         api_key=active_api_key,
                         model_name=model_choice,
                         temperature=temperature
                     )
 
                     if use_streaming:
-                        retrieved_docs, token_gen = stream_answer_query(
+                        stream_res = stream_answer_query(
                             query=active_prompt,
                             vectorstore=vectorstore,
                             llm=llm,
                             chat_history=history_payload,
-                            k=top_k
+                            k=top_k,
+                            active_order=st.session_state.get("active_refund_order")
                         )
+                        retrieved_docs = stream_res[0]
+                        token_gen = stream_res[1]
+                        matched_order = stream_res[2] if len(stream_res) > 2 else None
+                        refund_eval = stream_res[3] if len(stream_res) > 3 else None
+                        new_order = stream_res[4] if len(stream_res) > 4 else None
+
                         # Stream response
                         response_text = st.write_stream(token_gen)
                         sources_to_save = [
@@ -611,23 +632,34 @@ with tab_chat:
                             for d in retrieved_docs
                         ]
                     else:
-                        with st.spinner("Charlie is consulting ChromaDB and Gemini..."):
+                        with st.spinner("Charlie is consulting ChromaDB and Google Sheets..."):
                             rag_result = answer_query(
                                 query=active_prompt,
                                 vectorstore=vectorstore,
                                 llm=llm,
                                 chat_history=history_payload,
-                                k=top_k
+                                k=top_k,
+                                active_order=st.session_state.get("active_refund_order")
                             )
                             response_text = rag_result["answer"]
+                            matched_order = rag_result.get("matched_order")
+                            refund_eval = rag_result.get("refund_eval")
+                            new_order = rag_result.get("new_order")
                             st.markdown(response_text)
                             sources_to_save = [
                                 {"page_content": d.page_content, "metadata": d.metadata}
                                 for d in rag_result["source_documents"]
                             ]
 
-                    # Show sources accordion immediately
-                    if sources_to_save:
+                    if new_order:
+                        st.toast(f"🎉 New Order {new_order.get('order_id')} placed for {new_order.get('customer')} ({new_order.get('model_name')}) in Google Sheets!", icon="🛍️")
+
+                    # Track active refund order in session state
+                    if refund_eval and refund_eval.get("eligible"):
+                        st.session_state["active_refund_order"] = refund_eval
+
+                    # Show sources accordion immediately if enabled in settings
+                    if show_sources and sources_to_save:
                         with st.expander(f"🔍 Grounded Knowledge Sources ({len(sources_to_save)} chunks retrieved)", expanded=False):
                             for s_idx, doc in enumerate(sources_to_save):
                                 meta = doc["metadata"]
@@ -658,7 +690,7 @@ with tab_chat:
                     })
 
                 except Exception as ex:
-                    err_msg = f"❌ Error querying RAG pipeline: {ex}"
+                    err_msg = f"❌ Error querying agent pipeline: {ex}"
                     st.error(err_msg)
                     st.session_state["messages"].append({
                         "role": "assistant",
@@ -668,14 +700,194 @@ with tab_chat:
 
 
 # ---------------------------------------------------------
-# TAB 2: Product Catalog Explorer
+# TAB 2: Orders & Refunds Agent (Google Sheets)
+# ---------------------------------------------------------
+with tab_refund:
+    st.markdown("### 🛒 Orders & Refunds Management Agent")
+    st.caption("Directly connected to Google Sheets: Takes new customer orders, evaluates refund eligibility, and records banking information.")
+
+    # Refresh Button
+    r_col1, r_col2 = st.columns([4, 1])
+    with r_col2:
+        if st.button("🔄 Refresh Sheets Data", use_container_width=True):
+            st.rerun()
+
+    orders_list = sheets_service.fetch_orders()
+    df_orders = pd.DataFrame(orders_list)
+    if "_row_number" in df_orders.columns:
+        df_orders = df_orders.drop(columns=["_row_number"])
+
+    st.markdown("#### 📋 Live Orders Database (`Sheet1`)")
+    st.dataframe(df_orders, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    st.markdown("#### 🛍️ Step 1: Place a New Customer Order (Add to Google Sheet)")
+    with st.expander("➕ **Click to Create and Register a New Customer Order**", expanded=False):
+        st.write("Fill in customer name and choose a product from the live catalog to immediately append an order into Google Sheets:")
+
+        prod_df = sheets_service.fetch_products_dataframe()
+        prod_options = []
+        if prod_df is not None and not prod_df.empty:
+            for _, r in prod_df.iterrows():
+                brand = str(r.get("Brand", ""))
+                model = str(r.get("Model Name", ""))
+                price = float(r.get("price", 0.0))
+                stock = int(r.get("stock", 0)) if pd.notna(r.get("stock")) else 0
+                prod_options.append(f"{brand} {model} — ${price:.2f} ({stock} available)")
+
+        with st.form("form_create_new_order_tab2"):
+            fo_c1, fo_c2 = st.columns(2)
+            with fo_c1:
+                in_cust_name = st.text_input("Customer Name", placeholder="e.g. Hamza, Bilal, Sarah", key="tab2_cust_name")
+            with fo_c2:
+                in_sel_prod = st.selectbox("Select Product Model", prod_options, key="tab2_sel_prod")
+
+            btn_create_order = st.form_submit_button("🚀 Submit Order to Google Sheet", use_container_width=True)
+            if btn_create_order:
+                if not in_cust_name or not in_cust_name.strip():
+                    st.error("Please enter a customer name.")
+                elif not in_sel_prod:
+                    st.error("Please select a product.")
+                else:
+                    raw_model = in_sel_prod.split(" — ")[0].strip()
+                    with st.spinner("Submitting order to Google Sheets..."):
+                        c_res = sheets_service.create_new_order(
+                            customer=in_cust_name.strip(),
+                            model_name=raw_model
+                        )
+                        st.success(f"🎉 New Order **{c_res['order_id']}** created for **{c_res['customer']}** ({c_res['model_name']})!")
+                        if c_res.get("sheet_synced"):
+                            st.info("☁️ Appended directly to live Google Sheet (`orders` Sheet1).")
+                        st.rerun()
+
+    st.markdown("---")
+    st.markdown("#### ⚖️ Step 2: Evaluate Refund Eligibility")
+
+    order_choices = [f"{o.get('order_id')} — {o.get('customer')} ({o.get('Model Name')})" for o in orders_list]
+    selected_order_str = st.selectbox("Select an Order to Inspect:", order_choices)
+
+    if selected_order_str:
+        sel_oid = selected_order_str.split(" — ")[0].strip()
+        selected_order = sheets_service.find_order(sel_oid)
+
+        if selected_order:
+            eval_res = sheets_service.evaluate_refund_eligibility(selected_order)
+
+            # Render Eligibility Card
+            if eval_res["eligible"]:
+                st.markdown(f"""
+                <div class="eligible-box">
+                    <h3 style="margin: 0 0 8px 0; color: #047857;">✅ ELIGIBLE FOR REFUND</h3>
+                    <p style="margin: 0; font-size: 0.95rem; line-height: 1.5;">
+                        <strong>Order ID:</strong> {eval_res['order_id']} &nbsp;|&nbsp;
+                        <strong>Customer:</strong> {eval_res['customer']} &nbsp;|&nbsp;
+                        <strong>Product:</strong> {eval_res['model_name']} &nbsp;|&nbsp;
+                        <strong>Current Status:</strong> {eval_res['status'] or 'Pending'}
+                    </p>
+                    <p style="margin: 8px 0 0 0; font-size: 0.88rem;">
+                        <strong>Policy Assessment:</strong> Purchased <strong>{eval_res['days_ago']} days ago</strong>,
+                        which is within the allowed <strong>{eval_res['allowed_days']}-day return window</strong> for {eval_res['item_type']}.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                st.markdown("#### 💳 Step 2: Take Banking Information")
+                st.write("Since this order is eligible, please enter customer banking details below to disburse the refund:")
+
+                with st.form("tab_bank_details_form"):
+                    f_c1, f_c2 = st.columns(2)
+                    with f_c1:
+                        f_bank = st.text_input("Bank Name", placeholder="e.g. Meezan Bank, Chase, HBL, Bank of America")
+                        f_acc = st.text_input("Account Number / IBAN", placeholder="e.g. 9876543210")
+                    with f_c2:
+                        f_mob = st.text_input("Mobile / Contact Number", placeholder="e.g. 03001234567")
+                        st.markdown("<div style='height: 25px;'></div>", unsafe_allow_html=True)
+                        submit_btn = st.form_submit_button("🚀 Submit to Bank Details Sheet", use_container_width=True)
+
+                    if submit_btn:
+                        if not f_bank or not f_acc or not f_mob:
+                            st.error("Please fill in all banking fields before submitting.")
+                        else:
+                            with st.spinner("Submitting to Google Sheets..."):
+                                sub_result = sheets_service.submit_bank_details(
+                                    order_id=eval_res["order_id"],
+                                    customer=eval_res["customer"],
+                                    product=eval_res["model_name"],
+                                    bank_name=f_bank,
+                                    account_number=f_acc,
+                                    mobile_number=f_mob
+                                )
+                                st.success(f"🎉 Banking information recorded for Order {eval_res['order_id']}!")
+                                if sub_result.get("sheet_synced"):
+                                    st.info("☁️ Successfully synced to live Google Sheet (`Bank_details` Sheet1).")
+                                else:
+                                    st.warning("⚠️ " + str(sub_result.get("notice", "Recorded locally.")))
+                                st.rerun()
+
+            else:
+                st.markdown(f"""
+                <div class="ineligible-box">
+                    <h3 style="margin: 0 0 8px 0; color: #b91c1c;">❌ NOT ELIGIBLE FOR REFUND</h3>
+                    <p style="margin: 0; font-size: 0.95rem; line-height: 1.5;">
+                        <strong>Order ID:</strong> {eval_res['order_id']} &nbsp;|&nbsp;
+                        <strong>Customer:</strong> {eval_res['customer']} &nbsp;|&nbsp;
+                        <strong>Product:</strong> {eval_res['model_name']} &nbsp;|&nbsp;
+                        <strong>Current Status:</strong> {eval_res['status'] or 'Pending'}
+                    </p>
+                    <p style="margin: 8px 0 0 0; font-size: 0.88rem;">
+                        <strong>Policy Assessment:</strong> Purchased <strong>{eval_res['days_ago']} days ago</strong>,
+                        which exceeds the allowed <strong>{eval_res['allowed_days']}-day return window</strong> for {eval_res['item_type']}.
+                        Returns cannot be processed.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("#### 🏦 Live Bank Details Database (`Bank_details` Sheet)")
+
+    pending_banks = sheets_service.get_pending_bank_details()
+    sa_email = sheets_service.get_service_account_email()
+
+    if pending_banks:
+        st.warning(
+            f"⚠️ **Google Sheets Write Permission Notice ({len(pending_banks)} pending submission(s))**:\n\n"
+            f"The Google Service Account (`{sa_email}`) currently only has **Viewer** permission on your Google Sheet. "
+            f"Google Sheets API returns `HTTP 403: PERMISSION_DENIED` until you grant **Editor** access.\n\n"
+            f"**To sync rows automatically to Google Sheets:**\n"
+            f"1. Open your [Bank Details Sheet](https://docs.google.com/spreadsheets/d/1gWgVsSVU4u1V8qTcEIKj7F81XxY02Y-0sJCdc-J6gNg/edit?gid=0#gid=0) and [Orders Sheet](https://docs.google.com/spreadsheets/d/18G2BQlwSihkgC5JcCFosbMVEbSQBQE_hgvKpFogcWCI/edit?gid=1288216522#gid=1288216522)\n"
+            f"2. Click the green **Share** button (top-right)\n"
+            f"3. Change `{sa_email}` from **Viewer** to **Editor** and click **Save**\n"
+            f"4. Click the button below to immediately push all pending records into your Google Sheet!"
+        )
+        if st.button("🚀 Push All Pending Submissions to Google Sheets Now", key="btn_push_pending_sheets", use_container_width=True):
+            with st.spinner("Pushing records to Google Sheets..."):
+                sync_result = sheets_service.sync_pending_bank_details()
+                if sync_result.get("synced", 0) > 0:
+                    st.success(f"🎉 Successfully synced {sync_result['synced']} record(s) directly to your Google Sheet!")
+                    st.rerun()
+                else:
+                    st.error(f"❌ Failed to sync: {sync_result.get('error')}")
+
+    bank_records = sheets_service.fetch_bank_details()
+    if bank_records:
+        df_bank = pd.DataFrame(bank_records)
+        if "_cloud_synced" in df_bank.columns:
+            df_bank["Cloud Synced"] = df_bank["_cloud_synced"].apply(lambda x: "✅ Synced to Sheet" if x else "⏳ Local (Awaiting Editor Role)")
+            df_bank = df_bank.drop(columns=["_cloud_synced"])
+        st.dataframe(df_bank, use_container_width=True, hide_index=True)
+    else:
+        st.info("No bank details submitted yet.")
+
+
+# ---------------------------------------------------------
+# TAB 3: Product Catalog Explorer (Live Google Sheets)
 # ---------------------------------------------------------
 with tab_catalog:
-    st.markdown("### 📦 TechMart Product Catalog Explorer")
-    st.caption("Live catalog data loaded directly from `products.xlsx` and indexed as semantic vectors.")
+    st.markdown("### 📦 TechMart Product Catalog (Live Google Sheets)")
+    st.caption("Real-time inventory and pricing loaded directly from Google Sheets (`1RZ1U4TKfqqjY4kpbvFUQOJd_PwDlYp0I`).")
 
     try:
-        _, _, _, df_prod = load_all_cached_data()
+        _, df_prod = load_all_cached_data()
 
         # Search & Filter Controls
         f_row1, f_row2 = st.columns([3, 2])
@@ -730,7 +942,7 @@ with tab_catalog:
         elif sort_option == "Name (A-Z)":
             filtered_df = filtered_df.sort_values(by="Model Name", ascending=True)
 
-        st.caption(f"Showing **{len(filtered_df)}** of **{len(df_prod)}** products")
+        st.caption(f"Showing **{len(filtered_df)}** of **{len(df_prod)}** live products from Google Sheets")
 
         # Render Product Grid
         if len(filtered_df) == 0:
@@ -777,15 +989,15 @@ with tab_catalog:
                     st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
     except Exception as e:
-        st.error(f"Error loading product catalog: {e}")
+        st.error(f"Error loading product catalog from Google Sheets: {e}")
 
 
 # ---------------------------------------------------------
-# TAB 3: Store Policies & FAQ
+# TAB 4: Store Policies & FAQ
 # ---------------------------------------------------------
 with tab_policies:
     st.markdown("### 📜 TechMart Store Policies & Direct Support")
-    st.caption("Indexed clauses extracted from `policy.txt` and referenced by Charlie during customer inquiries.")
+    st.caption("Official store policy clauses referenced by Charlie to evaluate refund eligibility and answer questions.")
 
     # Quick Policy Highlights Row
     c1, c2, c3, c4 = st.columns(4)
@@ -823,7 +1035,7 @@ with tab_policies:
     policy_search = st.text_input("🔍 Search Policies", placeholder="e.g. refund, restocking fee, express shipping, warranty...")
 
     try:
-        policy_chunks, _, _, _ = load_all_cached_data()
+        policy_chunks, _ = load_all_cached_data()
 
         matching_chunks = []
         for i, chunk in enumerate(policy_chunks):
