@@ -59,9 +59,20 @@ function getServiceAccountCredentials() {
   // 1. Direct JSON string in environment variable
   if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
     try {
-      return JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+      const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON.trim();
+      return JSON.parse(raw);
     } catch (e) {
       console.warn('Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON from environment:', e);
+    }
+  }
+
+  // 1b. Base64-encoded JSON string (ideal for Vercel multiline/quote env vars)
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_BASE64) {
+    try {
+      const decoded = Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_BASE64.trim(), 'base64').toString('utf-8');
+      return JSON.parse(decoded);
+    } catch (e) {
+      console.warn('Failed to parse GOOGLE_SERVICE_ACCOUNT_BASE64 from environment:', e);
     }
   }
 
@@ -77,27 +88,34 @@ function getServiceAccountCredentials() {
 
   // 3. Fallback to scanning for local service account JSON file in workspace
   const root = process.cwd();
-  const files = fs.readdirSync(root);
-  const credsFile = files.find(
-    (f) =>
-      (f.startsWith('leads-data-') || f.includes('serviceaccount') || f.includes('credentials')) &&
-      f.endsWith('.json')
-  );
+  if (fs.existsSync(root)) {
+    try {
+      const files = fs.readdirSync(root);
+      const credsFile = files.find(
+        (f) =>
+          (f.startsWith('leads-data-') || f.includes('serviceaccount') || f.includes('credentials')) &&
+          f.endsWith('.json')
+      );
 
-  if (credsFile) {
-    const raw = fs.readFileSync(path.join(root, credsFile), 'utf-8');
-    return JSON.parse(raw);
+      if (credsFile) {
+        const raw = fs.readFileSync(path.join(root, credsFile), 'utf-8');
+        return JSON.parse(raw);
+      }
+    } catch (fsErr) {
+      console.warn('Filesystem scan fallback warning:', fsErr);
+    }
   }
 
-  throw new Error('No Google Service Account credentials JSON file found in project or configured in environment.');
+  throw new Error('No Google Service Account credentials found. On Vercel, please set GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_SERVICE_ACCOUNT_BASE64 in Project Settings > Environment Variables.');
 }
 
 export function getAuthorizedClient() {
   if (cachedAuth) return cachedAuth;
   const creds = getServiceAccountCredentials();
+  const privateKey = (creds.private_key || '').replace(/\\n/g, '\n');
   cachedAuth = new google.auth.JWT({
     email: creds.client_email,
-    key: creds.private_key,
+    key: privateKey,
     scopes: [
       'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/drive.readonly',
