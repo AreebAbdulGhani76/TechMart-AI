@@ -304,6 +304,7 @@ export default function HomePage() {
   const [bankMobile, setBankMobile] = useState('');
   const [submittingBank, setSubmittingBank] = useState(false);
   const [bankDetailsList, setBankDetailsList] = useState<BankDetail[]>([]);
+  const [loadingBankDetails, setLoadingBankDetails] = useState(false);
   const [bankConfirmationDialog, setBankConfirmationDialog] = useState<boolean>(false);
   const [bankSuccessBanner, setBankSuccessBanner] = useState<string | null>(null);
 
@@ -374,6 +375,7 @@ export default function HomePage() {
 
   const fetchBankDetailsData = async () => {
     try {
+      setLoadingBankDetails(true);
       const res = await fetch('/api/refund?view=bank_details');
       const data = await res.json();
       if (data.success && data.bankDetails) {
@@ -381,6 +383,8 @@ export default function HomePage() {
       }
     } catch (err) {
       console.error('Error fetching bank details:', err);
+    } finally {
+      setLoadingBankDetails(false);
     }
   };
 
@@ -981,11 +985,27 @@ export default function HomePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span className="sync-timestamp">Last refreshed: {lastSyncTime}</span>
               <button
-                className="btn-quiet"
+                type="button"
+                className="btn-icon-control"
                 onClick={() => fetchProductsData(true)}
+                title="Refresh products"
+                aria-label="Refresh products"
                 disabled={loadingProducts}
               >
-                🔄 {loadingProducts ? 'Refreshing...' : 'Refresh Sheets'}
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  className={loadingProducts ? 'spin-animation' : ''}
+                >
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                </svg>
               </button>
             </div>
           </div>
@@ -1057,8 +1077,28 @@ export default function HomePage() {
                     <span>📋 Live Orders</span>
                     <span className="nav-badge">{orders.length} Records</span>
                   </h3>
-                  <button className="btn-quiet" onClick={fetchOrdersData} disabled={loadingOrders}>
-                    🔄 Refresh
+                  <button
+                    type="button"
+                    className="btn-icon-control"
+                    onClick={fetchOrdersData}
+                    disabled={loadingOrders}
+                    title="Refresh orders"
+                    aria-label="Refresh orders"
+                  >
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className={loadingOrders ? 'spin-animation' : ''}
+                    >
+                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                    </svg>
                   </button>
                 </div>
 
@@ -1113,8 +1153,28 @@ export default function HomePage() {
                     <span>💳 Recorded Refund Accounts</span>
                     <span className="nav-badge">{bankDetailsList.length}</span>
                   </h3>
-                  <button className="btn-quiet" onClick={fetchBankDetailsData}>
-                    🔄 Refresh
+                  <button
+                    type="button"
+                    className="btn-icon-control"
+                    onClick={fetchBankDetailsData}
+                    disabled={loadingBankDetails}
+                    title="Refresh refund accounts"
+                    aria-label="Refresh refund accounts"
+                  >
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className={loadingBankDetails ? 'spin-animation' : ''}
+                    >
+                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                    </svg>
                   </button>
                 </div>
 
