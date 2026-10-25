@@ -447,19 +447,35 @@ select:focus-visible {
 
 .message-row.user .message-bubble {
   background: var(--primary);
-  color: #ffffff;
+  color: #ffffff !important;
   border-bottom-right-radius: 2px;
+}
+
+.message-row.user .message-bubble * {
+  color: #ffffff !important;
+}
+
+.message-row.user .message-bubble .order-pill {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 .message-row.assistant .message-bubble {
   background: var(--bg-panel-subtle);
   border: 1px solid var(--border-subtle);
-  color: var(--text-primary);
+  color: #ffffff;
   border-bottom-left-radius: 2px;
 }
 
-.message-bubble strong {
+.message-row.assistant .message-bubble p,
+.message-row.assistant .message-bubble span,
+.message-row.assistant .message-bubble div {
   color: #ffffff;
+}
+
+.message-bubble strong {
+  color: #ffffff !important;
   font-weight: 700;
 }
 
@@ -958,9 +974,10 @@ select:focus-visible {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
-  color: var(--primary);
-  background: var(--primary-subtle);
-  padding: 2px 6px;
+  color: #ffffff !important;
+  background: rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  padding: 2px 7px;
   border-radius: 4px;
 }
 

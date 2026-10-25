@@ -116,7 +116,17 @@ function renderFormattedInline(text: string): React.ReactNode[] {
       const inner = part.slice(2, -2);
       if (/^ORD-\d+$/i.test(inner)) {
         return (
-          <span key={`ord-${index}`} className="order-pill" style={{ display: 'inline-block', margin: '0 2px' }}>
+          <span
+            key={`ord-${index}`}
+            className="order-pill"
+            style={{
+              display: 'inline-block',
+              margin: '0 2px',
+              color: '#ffffff',
+              backgroundColor: 'rgba(99, 102, 241, 0.3)',
+              border: '1px solid rgba(99, 102, 241, 0.5)',
+            }}
+          >
             {inner.toUpperCase()}
           </span>
         );
@@ -136,7 +146,17 @@ function renderFormattedInline(text: string): React.ReactNode[] {
       const inner = part.slice(1, -1);
       if (/^ORD-\d+$/i.test(inner)) {
         return (
-          <span key={`ord-${index}`} className="order-pill" style={{ display: 'inline-block', margin: '0 2px' }}>
+          <span
+            key={`ord-${index}`}
+            className="order-pill"
+            style={{
+              display: 'inline-block',
+              margin: '0 2px',
+              color: '#ffffff',
+              backgroundColor: 'rgba(99, 102, 241, 0.3)',
+              border: '1px solid rgba(99, 102, 241, 0.5)',
+            }}
+          >
             {inner.toUpperCase()}
           </span>
         );
@@ -151,7 +171,17 @@ function renderFormattedInline(text: string): React.ReactNode[] {
     // 6. Direct Order ID matching (ORD-108 without asterisks)
     if (/^ORD-\d+$/i.test(part)) {
       return (
-        <span key={`ord-${index}`} className="order-pill" style={{ display: 'inline-block', margin: '0 2px' }}>
+        <span
+          key={`ord-${index}`}
+          className="order-pill"
+          style={{
+            display: 'inline-block',
+            margin: '0 2px',
+            color: '#ffffff',
+            backgroundColor: 'rgba(99, 102, 241, 0.3)',
+            border: '1px solid rgba(99, 102, 241, 0.5)',
+          }}
+        >
           {part.toUpperCase()}
         </span>
       );
@@ -163,7 +193,11 @@ function renderFormattedInline(text: string): React.ReactNode[] {
       .replace(/([A-Za-z0-9_\-]+)\*($|\s)/g, '$1$2')
       .replace(/\*{2,}/g, '');
 
-    return <span key={`t-${index}`}>{cleanText}</span>;
+    return (
+      <span key={`t-${index}`} style={{ color: '#ffffff' }}>
+        {cleanText}
+      </span>
+    );
   });
 }
 
@@ -187,10 +221,11 @@ function renderMessageContent(content: string) {
             gap: '8px',
             margin: '3px 0',
             paddingLeft: '4px',
+            color: '#ffffff',
           }}
         >
-          <span style={{ color: 'var(--primary)', fontSize: '13px', lineHeight: '1.6' }}>•</span>
-          <div style={{ flex: 1, lineHeight: '1.6' }}>{renderFormattedInline(cleanLine)}</div>
+          <span style={{ color: '#818cf8', fontSize: '13px', lineHeight: '1.6' }}>•</span>
+          <div style={{ flex: 1, lineHeight: '1.6', color: '#ffffff' }}>{renderFormattedInline(cleanLine)}</div>
         </div>
       );
     }
@@ -206,18 +241,19 @@ function renderMessageContent(content: string) {
             gap: '8px',
             margin: '3px 0',
             paddingLeft: '4px',
+            color: '#ffffff',
           }}
         >
-          <span style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '13px', lineHeight: '1.6' }}>
+          <span style={{ color: '#818cf8', fontWeight: 600, fontSize: '13px', lineHeight: '1.6' }}>
             {numMatch[1]}.
           </span>
-          <div style={{ flex: 1, lineHeight: '1.6' }}>{renderFormattedInline(numMatch[2])}</div>
+          <div style={{ flex: 1, lineHeight: '1.6', color: '#ffffff' }}>{renderFormattedInline(numMatch[2])}</div>
         </div>
       );
     }
 
     return (
-      <p key={idx} style={{ margin: '0 0 6px 0', lineHeight: '1.6' }}>
+      <p key={idx} style={{ margin: '0 0 6px 0', lineHeight: '1.6', color: '#ffffff' }}>
         {renderFormattedInline(line)}
       </p>
     );
@@ -1027,7 +1063,9 @@ export default function HomePage() {
                   <div key={m.id} className={`message-row ${m.role}`}>
                     <div className="msg-icon">{m.role === 'assistant' ? '⚡' : '👤'}</div>
                     <div style={{ maxWidth: '100%' }}>
-                      <div className="message-bubble">{renderMessageContent(m.content)}</div>
+                      <div className="message-bubble" style={{ color: '#ffffff' }}>
+                        {renderMessageContent(m.content)}
+                      </div>
 
                       {/* Real Verified Order Placement Callout */}
                       {m.orderInfo && (
