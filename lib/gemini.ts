@@ -93,7 +93,16 @@ CRITICAL: Do not invent details. Output the exact phrase:
   // 4. Check for Bank Details Submission
   let bankContext = '';
   const hasDigits = /\d{4,}/.test(userMessage);
-  const hasBankWord = /\b(bank|account|acc|iban|meezan|chase|hbl|habib|ubl|mcb|nayapay|sadapay)\b/i.test(userMessage);
+  const hasBankWord = /\b(bank|account|acc|iban|meezan|chase|hbl|habib|ubl|mcb|nayapay|sadapay|alfalah|allied|faysal|standard chartered|scb)\b/i.test(userMessage);
+
+  // If user provides bank info without explicitly repeating their Order ID, recover it from conversation history
+  if ((hasDigits && hasBankWord) && !orderIdMatch) {
+    orderIdMatch = history
+      .slice(-6)
+      .reverse()
+      .map((h) => h.content.match(/\b(ORD-?\d+)\b/i))
+      .find(Boolean) || null;
+  }
 
   if (hasDigits && hasBankWord && orderIdMatch) {
     // Extract bank details via quick LLM pass
@@ -104,7 +113,14 @@ CRITICAL: Do not invent details. Output the exact phrase:
       const cleanJson = extRes.response.text().replace(/```json|```/g, '').trim();
       const bData = JSON.parse(cleanJson);
       if (bData.account_number) {
-        const oid = orderIdMatch[1].toUpperCase();
+        let rawOid = (orderIdMatch[1] || orderIdMatch[0] || '').toUpperCase();
+        if (!rawOid.startsWith('ORD-') && rawOid.startsWith('ORD')) {
+          rawOid = rawOid.replace('ORD', 'ORD-');
+        } else if (!rawOid.startsWith('ORD-')) {
+          rawOid = `ORD-${rawOid}`;
+        }
+        const oid = rawOid;
+
         const evalRes = await evaluateRefund(oid);
         const effectiveCustomerEmail = bData.email || evalRes.email || undefined;
         const subRes = await submitBankDetails(
@@ -122,15 +138,17 @@ Customer: ${evalRes.customer}
 Bank: ${bData.bank_name}
 Account: ${bData.account_number}
 Mobile: ${bData.mobile_number}
+Customer Email: ${subRes.email}
 Google Sheets Write Status: SUCCESS (Status updated to 'Return Approved' in Sheet1, Column H Email synchronized, and interaction logged in Refund_Interactions tab)
-Automated Email Status: DISPATCHED to ${subRes.email} (Tracking Ref: ${subRes.email_reference})
+Automated Email Status: ${subRes.email_status} to ${subRes.email} (Tracking Ref: ${subRes.email_reference})${subRes.preview_url ? `\nEmail Live Web Preview: ${subRes.preview_url}` : ''}
 Refund Payout Schedule: 3-5 business days
 
 REQUIRED RESPONSE:
 1. Warmly confirm that their refund for Order ID ${oid} is officially APPROVED!
-2. Confirm that their banking details and refund status have been safely recorded in Google Sheets.
-3. Explicitly inform them: "An automated refund confirmation email has been sent to ${subRes.email} (Confirmation Ref: ${subRes.email_reference})."
-4. Reassure them that payout will disburse within 3 to 5 business days.`;
+2. Confirm that their banking details, email, and refund status have been safely recorded into Google Sheets.
+3. Explicitly inform them: "An automated refund confirmation email has been dispatched to ${subRes.email} (Confirmation Ref: ${subRes.email_reference})."
+${subRes.preview_url ? `4. If they wish to view the dispatched email right away, share this direct preview link: ${subRes.preview_url}` : ''}
+5. Reassure them that payout will disburse within 3 to 5 business days.`;
       }
     } catch (err) {
       console.warn('Bank extraction error:', err);

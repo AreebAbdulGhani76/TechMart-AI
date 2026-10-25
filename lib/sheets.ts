@@ -346,12 +346,12 @@ export async function submitBankDetails(
       requestBody: { values: [['Return Approved']] },
     });
 
-    if (email && email.includes('@') && (!target.email && !target.Email)) {
+    if (effectiveEmail && effectiveEmail.includes('@')) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: ORDERS_SHEET_ID,
         range: `Sheet1!H${target._row_number}`,
         valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [[email.trim()]] },
+        requestBody: { values: [[effectiveEmail]] },
       });
     }
   }
@@ -388,6 +388,7 @@ export async function submitBankDetails(
     email: emailRes.recipient,
     email_status: emailRes.status,
     email_reference: emailRes.reference,
+    preview_url: emailRes.previewUrl || '',
   };
 }
 
@@ -414,12 +415,12 @@ export async function approveRefund(orderId: string, customerEmail?: string): Pr
       requestBody: { values: [['Return Approved']] },
     });
 
-    if (customerEmail && customerEmail.includes('@') && (!target.email && !target.Email)) {
+    if (effectiveEmail && effectiveEmail.includes('@')) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: ORDERS_SHEET_ID,
         range: `Sheet1!H${target._row_number}`,
         valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [[customerEmail.trim()]] },
+        requestBody: { values: [[effectiveEmail]] },
       });
     }
   }
@@ -453,6 +454,7 @@ export async function approveRefund(orderId: string, customerEmail?: string): Pr
     email: emailRes.recipient,
     email_status: emailRes.status,
     email_reference: emailRes.reference,
+    preview_url: emailRes.previewUrl || '',
   };
 }
 

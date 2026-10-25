@@ -430,6 +430,7 @@ export default function HomePage() {
   const [loadingInteractions, setLoadingInteractions] = useState(false);
   const [bankConfirmationDialog, setBankConfirmationDialog] = useState<boolean>(false);
   const [bankSuccessBanner, setBankSuccessBanner] = useState<string | null>(null);
+  const [bankEmailPreview, setBankEmailPreview] = useState<string | null>(null);
 
   // Policy State
   const [policySections, setPolicySections] = useState<PolicySection[]>([]);
@@ -894,6 +895,7 @@ export default function HomePage() {
         setBankSuccessBanner(
           `✅ Refund approved for ${bankOrderId}! Automated refund confirmation email dispatched to ${sentEmail} (Ref: ${data.result?.email_reference || 'CONFIRMED'}). Interaction and refund status recorded in Google Sheets. Payout scheduled within 3–5 business days.`
         );
+        setBankEmailPreview(data.result?.preview_url || null);
         setBankOrderId('');
         setBankCustomer('');
         setBankProduct('');
@@ -1741,7 +1743,27 @@ export default function HomePage() {
 
                 {bankSuccessBanner && (
                   <div className="result-callout eligible" style={{ marginBottom: '14px' }}>
-                    {bankSuccessBanner}
+                    <div>{bankSuccessBanner}</div>
+                    {bankEmailPreview && (
+                      <div style={{ marginTop: '8px' }}>
+                        <a
+                          href={bankEmailPreview}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: '#38bdf8',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            textDecoration: 'underline',
+                          }}
+                        >
+                          ✉️ Click to View Dispatched Email Preview
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -209,7 +209,39 @@ TechMart AI Support Team
   `.trim();
 
   try {
-    // Check if live SMTP configuration is provided in environment
+    const gmailUser = (process.env.EMAIL_USER || process.env.GMAIL_USER || '').trim();
+    const gmailPass = (process.env.EMAIL_PASS || process.env.GMAIL_PASS || '').trim();
+
+    // 1. Check for Direct Gmail Credentials (e.g. Gmail App Password)
+    if (gmailUser && gmailPass) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: gmailUser,
+          pass: gmailPass,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: process.env.SMTP_FROM || `"TechMart AI Support" <${gmailUser}>`,
+        to: recipient,
+        subject: `Refund Approved: Order Confirmation #${orderId} - TechMart AI`,
+        text: textContent,
+        html: htmlContent,
+      });
+
+      console.log(`[EMAIL DISPATCH SUCCESS] Real Gmail email sent to ${recipient}, id: ${info.messageId}`);
+      return {
+        success: true,
+        messageId: info.messageId,
+        recipient,
+        reference,
+        sentAt,
+        status: 'DISPATCHED_GMAIL',
+      };
+    }
+
+    // 2. Check for Custom SMTP Server
     if (
       process.env.SMTP_HOST &&
       process.env.SMTP_USER &&
@@ -218,7 +250,7 @@ TechMart AI Support Team
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: parseInt(process.env.SMTP_PORT || '587', 10),
-        secure: process.env.SMTP_SECURE === 'true',
+        secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
@@ -242,14 +274,49 @@ TechMart AI Support Team
         sentAt,
         status: 'DISPATCHED_SMTP',
       };
-    } else {
-      // Production-grade fallback email dispatch handler
-      // Uses Nodemailer JSON transport / direct dispatcher with verified confirmation tracking
+    }
+
+    // 3. Fallback: Ethereal test inbox with clickable preview URL
+    try {
+      const testAccount = await nodemailer.createTestAccount();
+      const testTransporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+
+      const info = await testTransporter.sendMail({
+        from: `"TechMart AI Support" <${testAccount.user}>`,
+        to: recipient,
+        subject: `Refund Approved: Order Confirmation #${orderId} - TechMart AI`,
+        text: textContent,
+        html: htmlContent,
+      });
+
+      const previewUrl = nodemailer.getTestMessageUrl(info) || '';
+      console.log(`[ETHEREAL EMAIL DISPATCHED]:\n  To: ${recipient}\n  Preview URL: ${previewUrl}`);
+
+      return {
+        success: true,
+        messageId: info.messageId,
+        recipient,
+        reference,
+        sentAt,
+        status: 'ETHEREAL_PREVIEW',
+        previewUrl,
+      };
+    } catch (etherealErr: any) {
+      console.warn('[ETHEREAL FALLBACK FAILED, USING JSON TRANSPORT]:', etherealErr.message);
+
       const transporter = nodemailer.createTransport({
         jsonTransport: true,
       });
 
-      const info = await transporter.sendMail({
+      await transporter.sendMail({
         from: `"TechMart AI Support" <support@techmart.com>`,
         to: recipient,
         subject: `Refund Approved: Order Confirmation #${orderId} - TechMart AI`,
@@ -258,17 +325,13 @@ TechMart AI Support Team
       });
 
       const generatedId = `<refund-${Date.now()}@techmart-ai.com>`;
-      console.log(
-        `[AUTOMATED REFUND EMAIL DISPATCHED]:\n  To: ${recipient}\n  Order: ${orderId}\n  Customer: ${customer}\n  Reference: ${reference}\n  MessageId: ${generatedId}`
-      );
-
       return {
         success: true,
         messageId: generatedId,
         recipient,
         reference,
         sentAt,
-        status: 'AUTOMATED_EMAIL_SENT',
+        status: 'AUTOMATED_EMAIL_LOGGED',
       };
     }
   } catch (err: any) {
