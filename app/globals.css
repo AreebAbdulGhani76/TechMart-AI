@@ -1067,10 +1067,51 @@ select:focus-visible {
 .policy-center-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
   flex-wrap: wrap;
+}
+
+.policy-header-title-group {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.policy-search-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 460px;
+  min-width: 280px;
+  max-width: 520px;
+  width: 100%;
+}
+
+.policy-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.policy-search-wrapper .search-field {
+  width: 100%;
+  padding-left: 36px;
+  padding-right: 32px;
+  font-size: 13px;
+  height: 38px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  transition: var(--transition-fast);
+}
+
+.policy-search-wrapper .search-field:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary-subtle);
 }
 
 .policy-source-strip {
@@ -1087,11 +1128,21 @@ select:focus-visible {
   font-size: 12.5px;
 }
 
-.policy-source-info {
+.policy-source-left {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   color: var(--text-secondary);
+  min-width: 0;
+}
+
+.policy-source-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .policy-source-badge {
@@ -1104,6 +1155,26 @@ select:focus-visible {
   border-radius: var(--radius-full);
   font-weight: 600;
   color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.policy-verified-count {
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.policy-verified-count::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
 }
 
 .policy-grid-layout {
@@ -1388,6 +1459,34 @@ select:focus-visible {
     flex-direction: column;
     gap: 14px;
     width: 100%;
+  }
+  .policy-center-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+  .policy-header-title-group {
+    width: 100%;
+  }
+  .policy-search-container {
+    width: 100%;
+    max-width: 100%;
+  }
+  .policy-source-strip {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+  .policy-source-left {
+    width: 100%;
+    line-height: 1.5;
+  }
+  .policy-source-right {
+    width: 100%;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle);
   }
   .policy-cards-grid,
   .policy-grid-layout {

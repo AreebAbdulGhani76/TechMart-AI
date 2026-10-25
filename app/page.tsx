@@ -631,19 +631,19 @@ export default function HomePage() {
     return matchesSearch && matchesCategory;
   });
 
-  // Filtered Policy Sections (Searches across titles, full content, and keyword tags)
+  // Filtered Policy Sections (Searches across titles, full content, categories, and keyword tags)
   const filteredPolicies = policySections.filter((sec) => {
-    const isCompanyMasterDoc = sec.title.trim().toUpperCase() === 'COMPANY POLICY DOCUMENT';
     if (!policySearchTerm.trim()) {
-      // By default, display the 6 operational policies as cards while the master document is elevated to the compact status bar
-      return !isCompanyMasterDoc;
+      return true; // Renders all 7 policies
     }
     const term = policySearchTerm.toLowerCase().trim();
     const config = POLICY_CARD_CONFIG[sec.title.trim().toUpperCase()];
     const tagMatch = config?.highlights?.some((h) => h.text.toLowerCase().includes(term));
     const titleMatch = sec.title.toLowerCase().includes(term);
     const contentMatch = sec.content.toLowerCase().includes(term);
-    return titleMatch || contentMatch || Boolean(tagMatch);
+    const categoryMatch = config?.category?.toLowerCase().includes(term);
+    const summaryMatch = config?.shortSummary?.toLowerCase().includes(term);
+    return titleMatch || contentMatch || Boolean(tagMatch) || Boolean(categoryMatch) || Boolean(summaryMatch);
   });
 
   return (
@@ -1428,9 +1428,9 @@ export default function HomePage() {
       {/* VIEW 4: Official Store Policies Centre */}
       {activeTab === 'policies' && (
         <section aria-label="Official Store Policies Centre">
-          {/* Compact Page Header with Title, Description, and Functional Search */}
+          {/* Compact Page Header with Title, Description, and Responsive Functional Search */}
           <div className="policy-center-header">
-            <div>
+            <div className="policy-header-title-group">
               <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
                 Store Policies
               </h2>
@@ -1439,9 +1439,9 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Functional Search Field */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            {/* Functional Search Field with Responsive Expanded Width */}
+            <div className="policy-search-container">
+              <div className="policy-search-wrapper">
                 <span
                   style={{
                     position: 'absolute',
@@ -1450,13 +1450,13 @@ export default function HomePage() {
                     fontSize: '13px',
                     pointerEvents: 'none',
                   }}
+                  aria-hidden="true"
                 >
                   🔍
                 </span>
                 <input
                   type="text"
                   className="search-field"
-                  style={{ width: '280px', paddingLeft: '34px', paddingRight: policySearchTerm ? '30px' : '12px' }}
                   placeholder="Search policies (returns, refund, warranty)..."
                   value={policySearchTerm}
                   onChange={(e) => setPolicySearchTerm(e.target.value)}
@@ -1464,6 +1464,7 @@ export default function HomePage() {
                 />
                 {policySearchTerm && (
                   <button
+                    type="button"
                     onClick={() => setPolicySearchTerm('')}
                     style={{
                       position: 'absolute',
@@ -1485,9 +1486,9 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Compact Source-Status Indicator (elevates Company Policy Document) */}
+          {/* Refined Responsive Source-Status Indicator */}
           <div className="policy-source-strip">
-            <div className="policy-source-info">
+            <div className="policy-source-left">
               <span className="policy-source-badge">
                 <span
                   className={`status-dot ${policyServiceStatus === 'ready' ? 'active' : 'pending'}`}
@@ -1496,7 +1497,7 @@ export default function HomePage() {
                 📄 {policyMeta?.filename || 'policy.docx'}
               </span>
               <span>
-                <strong>Source:</strong> Company Policy Document &bull; TechMart Online Store &bull;{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>Source:</strong> Company Policy Document &bull; TechMart Online Store &bull;{' '}
                 <span style={{ color: 'var(--success)', fontWeight: 600 }}>Active Grounding</span>
               </span>
               {policyMeta?.sizeBytes && (
@@ -1506,21 +1507,27 @@ export default function HomePage() {
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '12.5px' }}>
-                7 Verified Sections
+            <div className="policy-source-right">
+              <span className="policy-verified-count">
+                {loadingPolicy
+                  ? 'Verifying Sections...'
+                  : `${policySections.length} Verified Section${policySections.length === 1 ? '' : 's'}`}
               </span>
               <button
+                type="button"
                 className="btn-secondary"
                 style={{
                   padding: '5px 12px',
                   fontSize: '12px',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                 }}
                 onClick={() => setShowSourceDocModal(true)}
                 title="View complete unedited policy document"
+                aria-label="View source document"
               >
                 <span>📖</span>
                 <span>View Source Document ↗</span>
