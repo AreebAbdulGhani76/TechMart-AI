@@ -909,9 +909,76 @@ select:focus-visible {
    ========================================================================== */
 .orders-split-layout {
   display: grid;
-  grid-template-columns: 1.7fr 1.3fr;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: var(--space-6);
   align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.orders-main-content {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  box-sizing: border-box;
+}
+
+.orders-main-content .section-panel {
+  margin-bottom: 0;
+  padding: 22px 24px;
+  box-sizing: border-box;
+}
+
+.orders-sidebar {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  box-sizing: border-box;
+}
+
+.orders-sidebar .section-panel,
+.orders-sidebar-card {
+  margin-bottom: 0;
+  padding: 22px 24px;
+  box-sizing: border-box;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.orders-sidebar-card:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-md);
+}
+
+.sidebar-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-card-desc {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 .section-panel {
@@ -1005,51 +1072,66 @@ select:focus-visible {
 
 /* Forms */
 .form-field-group {
-  margin-bottom: var(--space-3);
+  margin-bottom: 14px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .form-field-label {
   display: block;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
 }
 
 .form-field-input,
 .form-field-select {
   width: 100%;
+  box-sizing: border-box;
   background: var(--bg-panel-subtle);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 9px 12px;
-  font-size: 13.5px;
+  font-size: 13px;
+  line-height: 1.4;
   color: #ffffff;
   outline: none;
   font-family: inherit;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .form-field-input:focus,
 .form-field-select:focus {
   border-color: var(--border-focus);
+  background: rgba(22, 32, 50, 0.9);
 }
 
 .btn-primary-action {
   width: 100%;
+  box-sizing: border-box;
   background: var(--primary);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-sm);
-  padding: 10px;
+  padding: 10px 14px;
   color: #ffffff;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition-fast);
-  margin-top: 4px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
 }
 
 .btn-primary-action:hover:not(:disabled) {
   background: var(--primary-hover);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .btn-primary-action:disabled {
@@ -1059,11 +1141,15 @@ select:focus-visible {
 
 /* Result Callout */
 .result-callout {
-  margin-top: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 14px;
+  padding: 12px 14px;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .result-callout.eligible {
@@ -1446,6 +1532,11 @@ select:focus-visible {
   }
   .orders-split-layout {
     grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .orders-sidebar {
+    width: 100%;
+    gap: 20px;
   }
   .quick-actions-bar {
     grid-template-columns: repeat(2, 1fr);
@@ -1457,6 +1548,19 @@ select:focus-visible {
   .dashboard-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 16px;
+  }
+  .orders-split-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .orders-sidebar {
+    width: 100%;
+    gap: 16px;
+  }
+  .orders-main-content .section-panel,
+  .orders-sidebar .section-panel,
+  .orders-sidebar-card {
+    padding: 16px 18px;
   }
   .app-container {
     padding: var(--space-3) var(--space-3) var(--space-6);

@@ -1359,7 +1359,7 @@ export default function HomePage() {
         <section aria-label="Orders and Refunds Management">
           <div className="orders-split-layout">
             {/* Left Column: Live Orders & Bank Submissions */}
-            <div>
+            <div className="orders-main-content">
               {/* Live Orders Table */}
               <div className="section-panel">
                 <div className="panel-header">
@@ -1511,7 +1511,7 @@ export default function HomePage() {
               </div>
 
               {/* Recorded Refund Interactions & Automated Email Log (Google Sheets) */}
-              <div className="section-panel" style={{ marginTop: '20px' }}>
+              <div className="section-panel">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                   <div>
                     <h3 className="panel-title" style={{ marginBottom: '4px' }}>
@@ -1595,13 +1595,13 @@ export default function HomePage() {
             </div>
 
             {/* Right Column: Actions (Place Order, Evaluate Refund, Submit Bank) */}
-            <div>
+            <aside className="orders-sidebar" aria-label="Order and Refund Actions">
               {/* Place New Order */}
-              <div className="section-panel">
-                <h3 className="panel-title" style={{ marginBottom: '8px' }}>
+              <div className="section-panel orders-sidebar-card">
+                <h3 className="panel-title sidebar-card-title">
                   <span>➕ Place Customer Order</span>
                 </h3>
-                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+                <p className="sidebar-card-desc">
                   Registers order with sequential Order ID and updates live Google Sheets.
                 </p>
 
@@ -1659,11 +1659,11 @@ export default function HomePage() {
               </div>
 
               {/* Check Refund Eligibility */}
-              <div className="section-panel">
-                <h3 className="panel-title" style={{ marginBottom: '8px' }}>
+              <div className="section-panel orders-sidebar-card">
+                <h3 className="panel-title sidebar-card-title">
                   <span>⚖️ Check Refund Eligibility</span>
                 </h3>
-                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+                <p className="sidebar-card-desc">
                   Evaluates purchase date and item category against official store policy.
                 </p>
 
@@ -1710,11 +1710,11 @@ export default function HomePage() {
               </div>
 
               {/* Submit Bank Details */}
-              <div className="section-panel">
-                <h3 className="panel-title" style={{ marginBottom: '8px' }}>
+              <div className="section-panel orders-sidebar-card">
+                <h3 className="panel-title sidebar-card-title">
                   <span>🏦 Submit Refund Bank Details</span>
                 </h3>
-                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+                <p className="sidebar-card-desc">
                   Appends banking information to Google Sheets and updates status to &ldquo;Return Approved&rdquo;.
                 </p>
 
@@ -1804,7 +1804,7 @@ export default function HomePage() {
                   </button>
                 </form>
               </div>
-            </div>
+            </aside>
           </div>
         </section>
       )}
