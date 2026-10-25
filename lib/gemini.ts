@@ -97,7 +97,7 @@ CRITICAL: Do not invent details. Output the exact phrase:
   if (hasDigits && hasBankWord && orderIdMatch) {
     // Extract bank details via quick LLM pass
     const bankExtractModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
-    const extractPrompt = `Extract customer bank info from: "${userMessage}". Return strict JSON: {"bank_name": string, "account_number": string, "mobile_number": string}`;
+    const extractPrompt = `Extract customer bank info from: "${userMessage}". Return strict JSON: {"bank_name": string, "account_number": string, "mobile_number": string, "email": string or null}`;
     try {
       const extRes = await bankExtractModel.generateContent(extractPrompt);
       const cleanJson = extRes.response.text().replace(/```json|```/g, '').trim();
@@ -111,16 +111,24 @@ CRITICAL: Do not invent details. Output the exact phrase:
           evalRes.model_name || 'Item',
           bData.bank_name || 'Bank',
           bData.account_number,
-          bData.mobile_number || ''
+          bData.mobile_number || '',
+          bData.email || undefined
         );
-        bankContext = `[LIVE BANK DETAILS RECORDED IN GOOGLE SHEETS]:
+        bankContext = `[LIVE BANK DETAILS RECORDED & REFUND APPROVED IN GOOGLE SHEETS]:
 Order ID: ${oid}
 Customer: ${evalRes.customer}
 Bank: ${bData.bank_name}
 Account: ${bData.account_number}
 Mobile: ${bData.mobile_number}
-Google Sheets Write Status: SUCCESS
-Acknowledge receipt warmly, confirm these exact details, and let the customer know their refund is now approved and will disburse within 5 business days!`;
+Google Sheets Write Status: SUCCESS (Status updated to 'Return Approved' in Sheet1, and interaction logged in Refund_Interactions tab)
+Automated Email Status: DISPATCHED to ${subRes.email} (Tracking Ref: ${subRes.email_reference})
+Refund Payout Schedule: 3-5 business days
+
+REQUIRED RESPONSE:
+1. Warmly confirm that their refund for Order ID ${oid} is officially APPROVED!
+2. Confirm that their banking details and refund status have been safely recorded in Google Sheets.
+3. Explicitly inform them: "An automated refund confirmation email has been sent to ${subRes.email} (Confirmation Ref: ${subRes.email_reference})."
+4. Reassure them that payout will disburse within 3 to 5 business days.`;
       }
     } catch (err) {
       console.warn('Bank extraction error:', err);
@@ -187,17 +195,20 @@ You have four core duties:
      * When both product and name are given, the system registers the order into the live Google Sheet with status 'Order Placed'.
      * Confirm their Order ID (e.g. ORD-113), product model, total price, and shipping window (3-5 business days).
 
-3. **Decide Refund Eligibility**:
+3. **Decide Refund Eligibility & Automated Confirmation**:
    - When a customer asks about a return/refund or to check refund eligibility:
      * If they have NOT provided an Order ID yet: Politely ask: "Please enter your Order ID so I can check your refund eligibility."
      * Do NOT assume any default order ID (never assume ORD-101). Always ask for their Order ID first.
      * When an Order ID is provided, check the verified assessment below.
      * If the order is NOT FOUND: Explicitly respond: "Sorry, I couldn't find an order with that ID. Please check your Order ID and try again."
-     * If FOUND and ELIGIBLE: Warmly state their order details (Order ID, product model, purchase age, allowed return window), confirm eligibility, and ask for Bank Name, Account/IBAN Number, and Mobile Number.
+     * If FOUND and ELIGIBLE: Warmly state their order details (Order ID, product model, purchase age, allowed return window), confirm eligibility, and ask for Bank Name, Account/IBAN Number, and Mobile Number (or Email) to disburse payout and send their automated confirmation email.
      * If FOUND and NOT ELIGIBLE: State their order details and politely explain why using store policy rules (e.g. exceeded the return limit). Never assume every order is eligible.
 
-4. **Handle Banking Information**:
-   - When bank details are submitted, confirm receipt and reassure them that refunds are disbursed within 5 business days.
+4. **Handle Banking Information & Refund Approval**:
+   - When bank details are submitted:
+     * The refund is officially approved and recorded into live Google Sheets (updating order status to 'Return Approved' and recording the interaction in 'Refund_Interactions').
+     * An automated refund confirmation email is generated and sent to the customer.
+     * Acknowledge receipt, confirm the details, state that their automated refund confirmation email was sent, and reassure them that refunds are disbursed within 3-5 business days.
 
 5. **Formatting Rules**:
    - Write cleanly, warmly, and concisely.

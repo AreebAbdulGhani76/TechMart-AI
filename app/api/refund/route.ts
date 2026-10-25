@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { evaluateRefund, submitBankDetails, fetchBankDetails } from '@/lib/sheets';
+import {
+  evaluateRefund,
+  submitBankDetails,
+  fetchBankDetails,
+  approveRefund,
+  logRefundInteraction,
+  fetchRefundInteractions,
+} from '@/lib/sheets';
 
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
     const orderId = searchParams.get('order_id');
     const view = searchParams.get('view');
+
+    if (view === 'interactions') {
+      const interactions = await fetchRefundInteractions();
+      return NextResponse.json({ success: true, interactions, count: interactions.length });
+    }
 
     if (view === 'bank_details') {
       const bankDetails = await fetchBankDetails();
@@ -28,14 +40,34 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { action, order_id, customer, product, bank_name, account_number, mobile_number } = body;
+    const {
+      action,
+      order_id,
+      customer,
+      product,
+      bank_name,
+      account_number,
+      mobile_number,
+      email,
+      customer_email,
+    } = body;
 
-    if (action === 'evaluate' || (!action && order_id && !account_number)) {
+    const targetEmail = email || customer_email;
+
+    if (action === 'evaluate' || (!action && order_id && !account_number && !action)) {
       if (!order_id) {
         return NextResponse.json({ error: 'order_id is required' }, { status: 400 });
       }
       const evalResult = await evaluateRefund(order_id);
       return NextResponse.json({ success: true, result: evalResult });
+    }
+
+    if (action === 'approve') {
+      if (!order_id) {
+        return NextResponse.json({ error: 'order_id is required for approval' }, { status: 400 });
+      }
+      const res = await approveRefund(order_id, targetEmail);
+      return NextResponse.json({ success: true, result: res });
     }
 
     if (action === 'submit_bank' || (order_id && account_number)) {
@@ -51,7 +83,8 @@ export async function POST(req: NextRequest) {
         product || 'Product',
         bank_name,
         account_number,
-        mobile_number || ''
+        mobile_number || '',
+        targetEmail
       );
       return NextResponse.json({ success: true, result: res });
     }

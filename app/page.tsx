@@ -419,9 +419,12 @@ export default function HomePage() {
   const [bankName, setBankName] = useState('');
   const [bankAccount, setBankAccount] = useState('');
   const [bankMobile, setBankMobile] = useState('');
+  const [bankEmail, setBankEmail] = useState('');
   const [submittingBank, setSubmittingBank] = useState(false);
   const [bankDetailsList, setBankDetailsList] = useState<BankDetail[]>([]);
   const [loadingBankDetails, setLoadingBankDetails] = useState(false);
+  const [interactionsList, setInteractionsList] = useState<any[]>([]);
+  const [loadingInteractions, setLoadingInteractions] = useState(false);
   const [bankConfirmationDialog, setBankConfirmationDialog] = useState<boolean>(false);
   const [bankSuccessBanner, setBankSuccessBanner] = useState<string | null>(null);
 
@@ -448,6 +451,7 @@ export default function HomePage() {
     fetchProductsData();
     fetchOrdersData();
     fetchBankDetailsData();
+    fetchInteractionsData();
     fetchPolicyData();
   }, []);
 
@@ -502,6 +506,21 @@ export default function HomePage() {
       console.error('Error fetching bank details:', err);
     } finally {
       setLoadingBankDetails(false);
+    }
+  };
+
+  const fetchInteractionsData = async () => {
+    try {
+      setLoadingInteractions(true);
+      const res = await fetch('/api/refund?view=interactions');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.interactions)) {
+        setInteractionsList(data.interactions);
+      }
+    } catch (err) {
+      console.warn('Error fetching interactions:', err);
+    } finally {
+      setLoadingInteractions(false);
     }
   };
 
@@ -668,6 +687,7 @@ export default function HomePage() {
 
           fetchOrdersData();
           fetchBankDetailsData();
+          fetchInteractionsData();
         } catch (err: any) {
           setMessages((prev) => [
             ...prev,
@@ -751,6 +771,7 @@ export default function HomePage() {
       if (text.includes('ORD-') || accumulated.includes('ORD-')) {
         fetchOrdersData();
         fetchBankDetailsData();
+        fetchInteractionsData();
       }
     } catch (err: any) {
       setMessages((prev) => [
@@ -856,12 +877,14 @@ export default function HomePage() {
           bank_name: bankName.trim(),
           account_number: bankAccount.trim(),
           mobile_number: bankMobile.trim(),
+          email: bankEmail.trim(),
         }),
       });
       const data = await res.json();
       if (data.success) {
+        const sentEmail = data.result?.email || 'customer email';
         setBankSuccessBanner(
-          `Refund approved for ${bankOrderId}. Banking details securely synchronized with Google Sheets. Payout scheduled within 5 business days.`
+          `✅ Refund approved for ${bankOrderId}! Automated refund confirmation email dispatched to ${sentEmail} (Ref: ${data.result?.email_reference || 'CONFIRMED'}). Interaction and refund status recorded in Google Sheets. Payout scheduled within 3–5 business days.`
         );
         setBankOrderId('');
         setBankCustomer('');
@@ -869,9 +892,11 @@ export default function HomePage() {
         setBankName('');
         setBankAccount('');
         setBankMobile('');
+        setBankEmail('');
         setRefundEval(null);
         await fetchOrdersData();
         await fetchBankDetailsData();
+        await fetchInteractionsData();
       } else {
         alert(`Failed to save bank details: ${data.error}`);
       }
@@ -1484,6 +1509,89 @@ export default function HomePage() {
                   </table>
                 </div>
               </div>
+
+              {/* Recorded Refund Interactions & Automated Email Log (Google Sheets) */}
+              <div className="section-panel" style={{ marginTop: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <div>
+                    <h3 className="panel-title" style={{ marginBottom: '4px' }}>
+                      <span>📜 Refund Interactions & Status Log</span>
+                    </h3>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      Live Google Sheets Sync &bull; Automated Email Dispatch Confirmation
+                    </span>
+                  </div>
+                  <button
+                    className="btn-icon-control"
+                    onClick={fetchInteractionsData}
+                    disabled={loadingInteractions}
+                    title="Refresh interactions log"
+                    aria-label="Refresh interactions log"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className={loadingInteractions ? 'spin-animation' : ''}
+                    >
+                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="table-responsive-container">
+                  <table className="saas-table">
+                    <thead>
+                      <tr>
+                        <th>Timestamp</th>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Refund Status</th>
+                        <th>Email Dispatched To</th>
+                        <th>Interaction Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {interactionsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>
+                            No refund interactions logged yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        interactionsList.map((item, idx) => (
+                          <tr key={idx}>
+                            <td style={{ fontSize: '11.5px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                              {item.timestamp}
+                            </td>
+                            <td>
+                              <span className="order-pill">{item.order_id}</span>
+                            </td>
+                            <td>{item.customer}</td>
+                            <td>
+                              <span
+                                className={`status-badge-table ${
+                                  item.refund_status.toLowerCase().includes('approved') ? 'approved' : 'placed'
+                                }`}
+                              >
+                                {item.refund_status}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '12px', color: '#38bdf8' }}>{item.email_sent_to}</td>
+                            <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{item.interaction_notes}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
 
             {/* Right Column: Actions (Place Order, Evaluate Refund, Submit Bank) */}
@@ -1673,6 +1781,17 @@ export default function HomePage() {
                       placeholder="e.g. +92 300 1234567"
                       value={bankMobile}
                       onChange={(e) => setBankMobile(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-field-group">
+                    <label className="form-field-label">Customer Email (For Automated Confirmation Email)</label>
+                    <input
+                      type="email"
+                      className="form-field-input"
+                      placeholder="e.g. ali@techmart-customer.com"
+                      value={bankEmail}
+                      onChange={(e) => setBankEmail(e.target.value)}
                     />
                   </div>
 

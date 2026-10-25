@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { google } from 'googleapis';
 import * as XLSX from 'xlsx';
+import { sendRefundConfirmationEmail } from './email';
 
 export const PRODUCTS_SHEET_ID = process.env.PRODUCTS_SHEET_ID || '1RZ1U4TKfqqjY4kpbvFUQOJd_PwDlYp0I';
 export const ORDERS_SHEET_ID = process.env.ORDERS_SHEET_ID || '18G2BQlwSihkgC5JcCFosbMVEbSQBQE_hgvKpFogcWCI';
@@ -35,6 +36,16 @@ export interface BankDetailItem {
   Bank_Name: string;
   'Account Number': string;
   'Mobile Number': string;
+}
+
+export interface RefundInteractionItem {
+  timestamp: string;
+  order_id: string;
+  customer: string;
+  product: string;
+  refund_status: string;
+  email_sent_to: string;
+  interaction_notes: string;
 }
 
 let cachedAuth: any = null;
@@ -244,13 +255,50 @@ export async function evaluateRefund(orderId: string): Promise<any> {
   };
 }
 
+export async function logRefundInteraction(params: {
+  orderId: string;
+  customer: string;
+  product: string;
+  refundStatus: string;
+  emailSentTo?: string;
+  notes?: string;
+}): Promise<any> {
+  const auth = getAuthorizedClient();
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+  const row = [
+    timestamp,
+    params.orderId,
+    params.customer,
+    params.product,
+    params.refundStatus,
+    params.emailSentTo || 'N/A',
+    params.notes || '',
+  ];
+
+  try {
+    const appendRes = await sheets.spreadsheets.values.append({
+      spreadsheetId: ORDERS_SHEET_ID,
+      range: 'Refund_Interactions!A:G',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [row] },
+    });
+    return { success: appendRes.status === 200, row };
+  } catch (err: any) {
+    console.warn('Failed to append to Refund_Interactions sheet:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 export async function submitBankDetails(
   orderId: string,
   customer: string,
   product: string,
   bankName: string,
   accountNumber: string,
-  mobileNumber: string
+  mobileNumber: string,
+  email?: string
 ): Promise<any> {
   const auth = getAuthorizedClient();
   const sheets = google.sheets({ version: 'v4', auth });
@@ -276,6 +324,27 @@ export async function submitBankDetails(
     });
   }
 
+  // 1. Send automated refund confirmation email
+  const emailRes = await sendRefundConfirmationEmail({
+    orderId,
+    customer,
+    product,
+    customerEmail: email,
+    daysAgo: target?.days_ago || '5',
+    bankName,
+    accountNumber,
+  });
+
+  // 2. Store interaction and refund status in Google Sheets (Refund_Interactions tab)
+  await logRefundInteraction({
+    orderId,
+    customer,
+    product,
+    refundStatus: 'Return Approved',
+    emailSentTo: emailRes.recipient,
+    notes: `Refund approved with banking details. Automated confirmation email sent (Ref: ${emailRes.reference}).`,
+  });
+
   return {
     success: appendRes.status === 200,
     order_id: orderId,
@@ -284,7 +353,96 @@ export async function submitBankDetails(
     bank_name: bankName,
     account_number: accountNumber,
     mobile_number: mobileNumber,
+    email: emailRes.recipient,
+    email_status: emailRes.status,
+    email_reference: emailRes.reference,
   };
+}
+
+export async function approveRefund(orderId: string, customerEmail?: string): Promise<any> {
+  const evalRes = await evaluateRefund(orderId);
+  if (!evalRes.found) {
+    return { success: false, message: 'Order not found' };
+  }
+
+  const auth = getAuthorizedClient();
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  const orders = await fetchOrders();
+  const target = orders.find((o) => o.order_id.toLowerCase() === orderId.toLowerCase());
+  if (target && target._row_number) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: ORDERS_SHEET_ID,
+      range: `Sheet1!G${target._row_number}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [['Return Approved']] },
+    });
+  }
+
+  // Send automated confirmation email
+  const emailRes = await sendRefundConfirmationEmail({
+    orderId: evalRes.order_id,
+    customer: evalRes.customer,
+    product: evalRes.model_name,
+    customerEmail,
+    daysAgo: evalRes.days_ago,
+    allowedDays: evalRes.allowed_days,
+  });
+
+  // Store interaction and refund status in Google Sheets
+  await logRefundInteraction({
+    orderId: evalRes.order_id,
+    customer: evalRes.customer,
+    product: evalRes.model_name,
+    refundStatus: 'Return Approved',
+    emailSentTo: emailRes.recipient,
+    notes: `Refund approved under ${evalRes.item_type}. Automated confirmation email sent (Ref: ${emailRes.reference}).`,
+  });
+
+  return {
+    success: true,
+    order_id: evalRes.order_id,
+    customer: evalRes.customer,
+    product: evalRes.model_name,
+    status: 'Return Approved',
+    email: emailRes.recipient,
+    email_status: emailRes.status,
+    email_reference: emailRes.reference,
+  };
+}
+
+export async function fetchRefundInteractions(): Promise<RefundInteractionItem[]> {
+  try {
+    const auth = getAuthorizedClient();
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: ORDERS_SHEET_ID,
+      range: 'Refund_Interactions!A:G',
+    });
+
+    const rows = res.data.values || [];
+    if (rows.length < 2) return [];
+
+    const interactions: RefundInteractionItem[] = [];
+    for (let idx = 1; idx < rows.length; idx++) {
+      const r = rows[idx];
+      interactions.push({
+        timestamp: r[0] ? String(r[0]).trim() : '',
+        order_id: r[1] ? String(r[1]).trim() : '',
+        customer: r[2] ? String(r[2]).trim() : '',
+        product: r[3] ? String(r[3]).trim() : '',
+        refund_status: r[4] ? String(r[4]).trim() : '',
+        email_sent_to: r[5] ? String(r[5]).trim() : '',
+        interaction_notes: r[6] ? String(r[6]).trim() : '',
+      });
+    }
+
+    return interactions;
+  } catch (err) {
+    console.warn('Error fetching refund interactions:', err);
+    return [];
+  }
 }
 
 export async function fetchBankDetails(): Promise<BankDetailItem[]> {
