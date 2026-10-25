@@ -519,10 +519,21 @@ export async function fetchRefundInteractions(): Promise<RefundInteractionItem[]
     const auth = getAuthorizedClient();
     const sheets = google.sheets({ version: 'v4', auth });
 
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: ORDERS_SHEET_ID,
-      range: 'Refund_Interactions!A:G',
+    const [res, orders] = await Promise.all([
+      sheets.spreadsheets.values.get({
+        spreadsheetId: ORDERS_SHEET_ID,
+        range: 'Refund_Interactions!A:G',
+      }),
+      fetchOrders().catch(() => []),
+    ]);
+
+    const orderEmailMap = new Map<string, string>();
+    orders.forEach((o) => {
+      const em = o.Email || o.email;
+      if (em) orderEmailMap.set(o.order_id.toLowerCase(), em.trim());
     });
+
+    const senderEmail = (process.env.EMAIL_USER || process.env.GMAIL_USER || '').trim().toLowerCase();
 
     const rows = res.data.values || [];
     if (rows.length < 2) return [];
@@ -530,13 +541,22 @@ export async function fetchRefundInteractions(): Promise<RefundInteractionItem[]
     const interactions: RefundInteractionItem[] = [];
     for (let idx = 1; idx < rows.length; idx++) {
       const r = rows[idx];
+      const oid = r[1] ? String(r[1]).trim() : '';
+      const sheetEmail = orderEmailMap.get(oid.toLowerCase());
+      let emailSent = r[5] ? String(r[5]).trim() : '';
+
+      // If the recorded email is the sender's own store email or an example address, resolve to customer's registered email
+      if ((!emailSent || (senderEmail && emailSent.toLowerCase() === senderEmail) || emailSent.includes('example.com')) && sheetEmail) {
+        emailSent = sheetEmail;
+      }
+
       interactions.push({
         timestamp: r[0] ? String(r[0]).trim() : '',
-        order_id: r[1] ? String(r[1]).trim() : '',
+        order_id: oid,
         customer: r[2] ? String(r[2]).trim() : '',
         product: r[3] ? String(r[3]).trim() : '',
         refund_status: r[4] ? String(r[4]).trim() : '',
-        email_sent_to: r[5] ? String(r[5]).trim() : '',
+        email_sent_to: emailSent || sheetEmail || '',
         interaction_notes: r[6] ? String(r[6]).trim() : '',
       });
     }
