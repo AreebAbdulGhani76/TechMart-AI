@@ -51,39 +51,119 @@ interface PolicySection {
 
 // Markdown Formatter Helpers
 function renderFormattedInline(text: string): React.ReactNode[] {
-  const boldParts = text.split(/(\*\*[^*]+?\*\*)/g);
-  return boldParts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+  // Matches code blocks, inline code, bold-italic, bold, italic, or order IDs
+  const regex = /(```[\s\S]*?```|`[^`]+`|\*\*\*[^*]+?\*\*\*|\*\*[^*]+?\*\*|\*[^*]+?\*|__[^_]+?__|_[^_]+?_|\bORD-\d+\b)/gi;
+  const rawParts = text.split(regex);
+
+  return rawParts.map((part, index) => {
+    if (!part) return null;
+
+    // 1. Code blocks
+    if (part.startsWith('```') && part.endsWith('```')) {
       return (
-        <strong key={`b-${index}`} style={{ color: '#ffffff', fontWeight: 700 }}>
-          {part.slice(2, -2)}
+        <pre
+          key={`cb-${index}`}
+          style={{
+            background: 'rgba(0, 0, 0, 0.45)',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            fontSize: '12.5px',
+            fontFamily: 'var(--font-mono)',
+            color: '#38bdf8',
+            overflowX: 'auto',
+            margin: '6px 0',
+          }}
+        >
+          {part.slice(3, -3).trim()}
+        </pre>
+      );
+    }
+
+    // 2. Inline code
+    if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
+      return (
+        <code
+          key={`c-${index}`}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            background: 'rgba(0, 0, 0, 0.45)',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            fontSize: '13px',
+            color: '#38bdf8',
+          }}
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    // 3. Bold-Italic (***text***)
+    if (part.startsWith('***') && part.endsWith('***') && part.length >= 6) {
+      const inner = part.slice(3, -3);
+      return (
+        <strong key={`bi-${index}`} style={{ color: '#ffffff', fontWeight: 700 }}>
+          <em style={{ color: '#e0e7ff', fontStyle: 'italic' }}>{inner}</em>
         </strong>
       );
     }
-    if (part.includes('`')) {
-      const codeParts = part.split(/(`[^`]+?`)/g);
-      return codeParts.map((cp, cIdx) => {
-        if (cp.startsWith('`') && cp.endsWith('`') && cp.length >= 2) {
-          return (
-            <code
-              key={`c-${index}-${cIdx}`}
-              style={{
-                fontFamily: 'var(--font-mono)',
-                background: 'rgba(0, 0, 0, 0.45)',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                fontSize: '13px',
-                color: '#38bdf8',
-              }}
-            >
-              {cp.slice(1, -1)}
-            </code>
-          );
-        }
-        return cp;
-      });
+
+    // 4. Bold (**text** or __text__)
+    if (
+      ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('__') && part.endsWith('__'))) &&
+      part.length >= 4
+    ) {
+      const inner = part.slice(2, -2);
+      if (/^ORD-\d+$/i.test(inner)) {
+        return (
+          <span key={`ord-${index}`} className="order-pill" style={{ display: 'inline-block', margin: '0 2px' }}>
+            {inner.toUpperCase()}
+          </span>
+        );
+      }
+      return (
+        <strong key={`b-${index}`} style={{ color: '#ffffff', fontWeight: 700 }}>
+          {inner}
+        </strong>
+      );
     }
-    return part;
+
+    // 5. Italic / Single-Asterisk (*text* or _text_)
+    if (
+      ((part.startsWith('*') && part.endsWith('*')) || (part.startsWith('_') && part.endsWith('_'))) &&
+      part.length >= 2
+    ) {
+      const inner = part.slice(1, -1);
+      if (/^ORD-\d+$/i.test(inner)) {
+        return (
+          <span key={`ord-${index}`} className="order-pill" style={{ display: 'inline-block', margin: '0 2px' }}>
+            {inner.toUpperCase()}
+          </span>
+        );
+      }
+      return (
+        <strong key={`em-${index}`} style={{ color: '#ffffff', fontWeight: 600 }}>
+          {inner}
+        </strong>
+      );
+    }
+
+    // 6. Direct Order ID matching (ORD-108 without asterisks)
+    if (/^ORD-\d+$/i.test(part)) {
+      return (
+        <span key={`ord-${index}`} className="order-pill" style={{ display: 'inline-block', margin: '0 2px' }}>
+          {part.toUpperCase()}
+        </span>
+      );
+    }
+
+    // 7. Plain text: clean up any remaining stray asterisks attached to words
+    const cleanText = part
+      .replace(/(^|\s)\*([A-Za-z0-9_\-]+)/g, '$1$2')
+      .replace(/([A-Za-z0-9_\-]+)\*($|\s)/g, '$1$2')
+      .replace(/\*{2,}/g, '');
+
+    return <span key={`t-${index}`}>{cleanText}</span>;
   });
 }
 
