@@ -38,14 +38,37 @@ export async function processAgentChat(
 
   // 3. Inspect Order & Refund Status
   let orderRefundContext = '';
-  const orderIdMatch = userMessage.match(/\b(ORD-\d+)\b/i) || 
-    history.slice(-4).map(h => h.content.match(/\b(ORD-\d+)\b/i)).find(Boolean);
+  const isRefundCheckIntentWithoutId =
+    /\b(check a refund|check refund|get a refund|claim a refund|return an item|refund eligibility|need a refund)\b/i.test(userMessage) &&
+    !/\bORD-?\d+\b/i.test(userMessage);
 
-  if (orderIdMatch) {
-    const oid = orderIdMatch[1].toUpperCase();
-    const evalRes = await evaluateRefund(oid);
-    if (evalRes.found) {
-      orderRefundContext = `[VERIFIED ORDER & REFUND ASSESSMENT from Google Sheets]:
+  let orderIdMatch = null;
+  if (isRefundCheckIntentWithoutId) {
+    orderRefundContext = `[CUSTOMER ASKING FOR REFUND CHECK - ORDER ID NEEDED]:
+The customer wants to check refund eligibility, but has not provided their Order ID.
+REQUIRED EXACT RESPONSE:
+"Please enter your Order ID so I can check your refund eligibility."
+CRITICAL: Do NOT check any past order from history and do NOT default to ORD-101 or any order ID.`;
+  } else {
+    orderIdMatch = userMessage.match(/\b(ORD-?\d+)\b/i) ||
+      (userMessage.trim().match(/^#?(\d{3,4})$/) ? [null, `ORD-${userMessage.trim().replace('#', '')}`] : null);
+
+    // Only fall back to history if the current message is a follow-up question referring to the previous order
+    if (!orderIdMatch && /\b(it|this|that|my order|the order|status|eligible|eligibility)\b/i.test(userMessage)) {
+      orderIdMatch = history.slice(-3).map(h => h.content.match(/\b(ORD-?\d+)\b/i)).find(Boolean);
+    }
+
+    if (orderIdMatch) {
+      let oid = (orderIdMatch[1] || orderIdMatch[0]).toUpperCase();
+      if (!oid.startsWith('ORD-') && oid.startsWith('ORD')) {
+        oid = oid.replace('ORD', 'ORD-');
+      } else if (!oid.startsWith('ORD-')) {
+        oid = `ORD-${oid}`;
+      }
+
+      const evalRes = await evaluateRefund(oid);
+      if (evalRes.found) {
+        orderRefundContext = `[VERIFIED ORDER & REFUND ASSESSMENT from Google Sheets]:
 Order ID: ${evalRes.order_id}
 Customer: ${evalRes.customer}
 Product: ${evalRes.model_name}
@@ -54,6 +77,15 @@ Allowed Return Window: ${evalRes.allowed_days} days (${evalRes.item_type})
 Current Status: ${evalRes.status}
 Eligible for Refund: ${evalRes.eligible ? 'YES' : 'NO'}
 Summary: ${evalRes.message}`;
+      } else {
+        orderRefundContext = `[ORDER SEARCH RESULT from Google Sheets]:
+Order ID searched: ${oid}
+Status: NOT FOUND in database.
+REQUIRED EXACT RESPONSE:
+"Sorry, I couldn't find an order with that ID. Please check your Order ID and try again."
+CRITICAL: Do not invent details. Output the exact phrase:
+"Sorry, I couldn't find an order with that ID. Please check your Order ID and try again."`;
+      }
     }
   }
 
@@ -156,11 +188,13 @@ You have four core duties:
      * Confirm their Order ID (e.g. ORD-113), product model, total price, and shipping window (3-5 business days).
 
 3. **Decide Refund Eligibility**:
-   - When a customer asks about a return/refund:
-     * Check the verified order assessment below.
-     * **Policy Rules**: Electronics (15 days), General items (30 days), Final Sale (No returns).
-     * If ELIGIBLE: Congratulate the customer, state order details, and ask for Bank Name, Account/IBAN, and Mobile Number.
-     * If NOT ELIGIBLE: Politely explain why using policy rules.
+   - When a customer asks about a return/refund or to check refund eligibility:
+     * If they have NOT provided an Order ID yet: Politely ask: "Please enter your Order ID so I can check your refund eligibility."
+     * Do NOT assume any default order ID (never assume ORD-101). Always ask for their Order ID first.
+     * When an Order ID is provided, check the verified assessment below.
+     * If the order is NOT FOUND: Explicitly respond: "Sorry, I couldn't find an order with that ID. Please check your Order ID and try again."
+     * If FOUND and ELIGIBLE: Warmly state their order details (Order ID, product model, purchase age, allowed return window), confirm eligibility, and ask for Bank Name, Account/IBAN Number, and Mobile Number.
+     * If FOUND and NOT ELIGIBLE: State their order details and politely explain why using store policy rules (e.g. exceeded the return limit). Never assume every order is eligible.
 
 4. **Handle Banking Information**:
    - When bank details are submitted, confirm receipt and reassure them that refunds are disbursed within 5 business days.

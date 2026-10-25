@@ -353,6 +353,7 @@ export default function HomePage() {
   const [inputMessage, setInputMessage] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [showClearChatModal, setShowClearChatModal] = useState<boolean>(false);
+  const [chatState, setChatState] = useState<'idle' | 'awaiting_order_id'>('idle');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Products State
@@ -495,6 +496,27 @@ export default function HomePage() {
     }
   };
 
+  // Check Refund Quick Action Flow: Ask for Order ID first and set state to awaiting_order_id
+  const handleCheckRefundClick = () => {
+    if (isStreaming) return;
+    setChatState('awaiting_order_id');
+    const userMsgId = `user-${Date.now()}`;
+    const assistantMsgId = `assistant-${Date.now() + 1}`;
+    setMessages((prev) => [
+      ...prev,
+      { id: userMsgId, role: 'user', content: 'Check a refund' },
+      {
+        id: assistantMsgId,
+        role: 'assistant',
+        content: 'Please enter your Order ID so I can check your refund eligibility.',
+      },
+    ]);
+    setTimeout(() => {
+      const inputEl = document.getElementById('chat-composer-input');
+      if (inputEl) inputEl.focus();
+    }, 50);
+  };
+
   // Chat Submission Handler
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputMessage).trim();
@@ -504,6 +526,129 @@ export default function HomePage() {
     const userMsgId = `user-${Date.now()}`;
     const assistantMsgId = `assistant-${Date.now()}`;
 
+    // Handle awaiting_order_id conversation state
+    if (chatState === 'awaiting_order_id') {
+      const isCancellation = /^(cancel|stop|nevermind|back|reset|exit)$/i.test(text);
+      if (isCancellation) {
+        setChatState('idle');
+        setMessages((prev) => [
+          ...prev,
+          { id: userMsgId, role: 'user', content: text },
+          {
+            id: assistantMsgId,
+            role: 'assistant',
+            content: 'Refund check cancelled. How else can I help you today?',
+          },
+        ]);
+        return;
+      }
+
+      // If user clicked another quick action or asked about a totally different topic
+      const isOtherTopic =
+        /recommend|catalog|find a product|track an order|return policy|what is the company return/i.test(text) &&
+        !/\bORD-?\d+\b/i.test(text);
+
+      if (isOtherTopic) {
+        setChatState('idle');
+        // fall through to normal handleSendMessage
+      } else {
+        // User entered an Order ID candidate
+        let candidateId = text.trim();
+        const ordMatch = candidateId.match(/\b(ORD-?\d+)\b/i);
+        const numMatch = candidateId.match(/^#?(\d{3,4})$/);
+        if (ordMatch) {
+          candidateId = ordMatch[1].toUpperCase().replace('ORD', 'ORD-').replace('ORD--', 'ORD-');
+        } else if (numMatch) {
+          candidateId = `ORD-${numMatch[1]}`;
+        }
+
+        const newHistory = [...messages, { id: userMsgId, role: 'user' as const, content: text }];
+        setMessages(newHistory);
+        setIsStreaming(true);
+
+        try {
+          // Search & validate the Order ID against the live orders database
+          const checkRes = await fetch(`/api/refund?order_id=${encodeURIComponent(candidateId)}`);
+          const checkData = await checkRes.json();
+
+          if (!checkData.success || !checkData.result?.found) {
+            // Order ID is invalid or not found in database
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: assistantMsgId,
+                role: 'assistant',
+                content: "Sorry, I couldn't find an order with that ID. Please check your Order ID and try again.",
+              },
+            ]);
+            // Remain in awaiting_order_id state so user can enter the Order ID again
+            return;
+          }
+
+          // Valid order found! Reset state and stream detailed refund eligibility from Charlie
+          setChatState('idle');
+
+          const chatPayloadHistory = newHistory.slice(-6).map((m) => ({
+            role: m.role,
+            content: m.content,
+          }));
+
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: `Can you check if order ${checkData.result.order_id} is eligible for a refund under store policy?`,
+              history: chatPayloadHistory,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Chat error HTTP ${response.status}`);
+          }
+
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder('utf-8');
+          let accumulated = '';
+
+          setMessages((prev) => [
+            ...prev,
+            { id: assistantMsgId, role: 'assistant', content: '' },
+          ]);
+
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              const chunk = decoder.decode(value, { stream: true });
+              accumulated += chunk;
+
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId ? { ...msg, content: accumulated } : msg
+                )
+              );
+            }
+          }
+
+          fetchOrdersData();
+          fetchBankDetailsData();
+        } catch (err: any) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: assistantMsgId,
+              role: 'assistant',
+              content: `⚠️ Charlie encountered an issue checking your refund: ${err.message || 'Please try again.'}`,
+            },
+          ]);
+        } finally {
+          setIsStreaming(false);
+        }
+        return;
+      }
+    }
+
+    // Normal message flow
     const newHistory = [...messages, { id: userMsgId, role: 'user' as const, content: text }];
     setMessages(newHistory);
     setIsStreaming(true);
@@ -561,6 +706,10 @@ export default function HomePage() {
             )
           );
         }
+      }
+
+      if (accumulated.includes('Please enter your Order ID so I can check your refund eligibility.')) {
+        setChatState('awaiting_order_id');
       }
 
       if (text.includes('ORD-') || accumulated.includes('ORD-')) {
@@ -934,9 +1083,7 @@ export default function HomePage() {
                 </button>
                 <button
                   className="quick-action-btn"
-                  onClick={() =>
-                    handleSendMessage('Can you check if order ORD-101 is eligible for a refund under store policy?')
-                  }
+                  onClick={handleCheckRefundClick}
                 >
                   <span>⚖️</span>
                   <span>Check a refund</span>
@@ -2002,6 +2149,7 @@ export default function HomePage() {
                   ]);
                   setIsStreaming(false);
                   setShowClearChatModal(false);
+                  setChatState('idle');
                 }}
               >
                 Clear Conversation
