@@ -27,6 +27,8 @@ export interface OrderItem {
   category: string;
   days_ago: string | number;
   Status: string;
+  Email?: string;
+  email?: string;
 }
 
 export interface BankDetailItem {
@@ -149,7 +151,7 @@ export async function fetchOrders(): Promise<OrderItem[]> {
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: ORDERS_SHEET_ID,
-    range: 'Sheet1!A:G',
+    range: 'Sheet1!A:Z',
   });
 
   const rows = res.data.values || [];
@@ -164,13 +166,17 @@ export async function fetchOrders(): Promise<OrderItem[]> {
     headers.forEach((h: string, colIdx: number) => {
       item[h] = r[colIdx] ? String(r[colIdx]).trim() : '';
     });
+    // Ensure both 'email' and 'Email' are set from column H or header
+    const emailVal = item.Email || item.email || (r[7] ? String(r[7]).trim() : '');
+    item.Email = emailVal;
+    item.email = emailVal;
     orders.push(item as OrderItem);
   }
 
   return orders;
 }
 
-export async function createOrder(customer: string, modelName: string): Promise<any> {
+export async function createOrder(customer: string, modelName: string, email?: string): Promise<any> {
   const auth = getAuthorizedClient();
   const sheets = google.sheets({ version: 'v4', auth });
 
@@ -199,12 +205,23 @@ export async function createOrder(customer: string, modelName: string): Promise<
   const resolvedCategory = 'electronics';
   const price = matchedProd ? matchedProd.price : 0.0;
   const stock = matchedProd ? matchedProd.stock : 0;
+  const customerEmail = (email || '').trim();
 
-  const row = [nextOrderId, customer.trim(), resolvedModel, resolvedProduct, resolvedCategory, '0', 'Order Placed'];
+  // Columns: order_id, customer, Model Name, product, category, days_ago, Status, Email
+  const row = [
+    nextOrderId,
+    customer.trim(),
+    resolvedModel,
+    resolvedProduct,
+    resolvedCategory,
+    '0',
+    'Order Placed',
+    customerEmail,
+  ];
 
   const appendRes = await sheets.spreadsheets.values.append({
     spreadsheetId: ORDERS_SHEET_ID,
-    range: 'Sheet1!A:G',
+    range: 'Sheet1!A:H',
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [row] },
   });
@@ -219,6 +236,7 @@ export async function createOrder(customer: string, modelName: string): Promise<
     price,
     stock,
     status: 'Order Placed',
+    email: customerEmail,
   };
 }
 
@@ -248,6 +266,7 @@ export async function evaluateRefund(orderId: string): Promise<any> {
     allowed_days: allowedDays,
     eligible,
     status: target.Status || 'Pending',
+    email: target.email || target.Email || '',
     item_type: isElectronics ? 'Electronics (15-day limit)' : 'General Merchandise (30-day limit)',
     message: eligible
       ? `Order ${target.order_id} is within the ${allowedDays}-day return window and is ELIGIBLE for a refund.`
@@ -315,6 +334,10 @@ export async function submitBankDetails(
   // Also update order status in orders sheet
   const orders = await fetchOrders();
   const target = orders.find((o) => o.order_id.toLowerCase() === orderId.toLowerCase());
+  const effectiveEmail = (email && email.includes('@'))
+    ? email.trim()
+    : (target?.email || target?.Email || '');
+
   if (target && target._row_number) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: ORDERS_SHEET_ID,
@@ -322,6 +345,15 @@ export async function submitBankDetails(
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [['Return Approved']] },
     });
+
+    if (email && email.includes('@') && (!target.email && !target.Email)) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: ORDERS_SHEET_ID,
+        range: `Sheet1!H${target._row_number}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [[email.trim()]] },
+      });
+    }
   }
 
   // 1. Send automated refund confirmation email
@@ -329,7 +361,7 @@ export async function submitBankDetails(
     orderId,
     customer,
     product,
-    customerEmail: email,
+    customerEmail: effectiveEmail || undefined,
     daysAgo: target?.days_ago || '5',
     bankName,
     accountNumber,
@@ -370,6 +402,10 @@ export async function approveRefund(orderId: string, customerEmail?: string): Pr
 
   const orders = await fetchOrders();
   const target = orders.find((o) => o.order_id.toLowerCase() === orderId.toLowerCase());
+  const effectiveEmail = (customerEmail && customerEmail.includes('@'))
+    ? customerEmail.trim()
+    : (target?.email || target?.Email || '');
+
   if (target && target._row_number) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: ORDERS_SHEET_ID,
@@ -377,6 +413,15 @@ export async function approveRefund(orderId: string, customerEmail?: string): Pr
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [['Return Approved']] },
     });
+
+    if (customerEmail && customerEmail.includes('@') && (!target.email && !target.Email)) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: ORDERS_SHEET_ID,
+        range: `Sheet1!H${target._row_number}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [[customerEmail.trim()]] },
+      });
+    }
   }
 
   // Send automated confirmation email
@@ -384,7 +429,7 @@ export async function approveRefund(orderId: string, customerEmail?: string): Pr
     orderId: evalRes.order_id,
     customer: evalRes.customer,
     product: evalRes.model_name,
-    customerEmail,
+    customerEmail: effectiveEmail || undefined,
     daysAgo: evalRes.days_ago,
     allowedDays: evalRes.allowed_days,
   });
@@ -409,6 +454,24 @@ export async function approveRefund(orderId: string, customerEmail?: string): Pr
     email_status: emailRes.status,
     email_reference: emailRes.reference,
   };
+}
+
+export async function updateOrderEmail(orderId: string, email: string): Promise<any> {
+  const auth = getAuthorizedClient();
+  const sheets = google.sheets({ version: 'v4', auth });
+  const orders = await fetchOrders();
+  const target = orders.find((o) => o.order_id.toLowerCase() === orderId.toLowerCase());
+  if (!target || !target._row_number) {
+    return { success: false, message: `Order ${orderId} not found.` };
+  }
+  const cleanEmail = email.trim();
+  const res = await sheets.spreadsheets.values.update({
+    spreadsheetId: ORDERS_SHEET_ID,
+    range: `Sheet1!H${target._row_number}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[cleanEmail]] },
+  });
+  return { success: res.status === 200, order_id: orderId, email: cleanEmail };
 }
 
 export async function fetchRefundInteractions(): Promise<RefundInteractionItem[]> {

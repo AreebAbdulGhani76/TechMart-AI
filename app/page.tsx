@@ -33,6 +33,8 @@ interface Order {
   category: string;
   days_ago: string | number;
   Status: string;
+  Email?: string;
+  email?: string;
 }
 
 interface BankDetail {
@@ -403,6 +405,7 @@ export default function HomePage() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newProductModel, setNewProductModel] = useState('');
+  const [newCustomerEmail, setNewCustomerEmail] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderConfirmationDialog, setOrderConfirmationDialog] = useState<boolean>(false);
   const [orderSuccessBanner, setOrderSuccessBanner] = useState<any>(null);
@@ -804,6 +807,7 @@ export default function HomePage() {
         body: JSON.stringify({
           customer: newCustomerName.trim(),
           model_name: newProductModel.trim(),
+          email: newCustomerEmail.trim(),
         }),
       });
       const data = await res.json();
@@ -811,6 +815,7 @@ export default function HomePage() {
         setOrderSuccessBanner(data.order);
         setNewCustomerName('');
         setNewProductModel('');
+        setNewCustomerEmail('');
         await fetchOrdersData();
       } else {
         alert(`Failed to place order: ${data.error || 'Unknown error'}`);
@@ -844,6 +849,9 @@ export default function HomePage() {
           setBankOrderId(data.result.order_id);
           setBankCustomer(data.result.customer);
           setBankProduct(data.result.model_name);
+          if (data.result.email) {
+            setBankEmail(data.result.email);
+          }
         }
       } else {
         alert(data.error || 'Order not found in database.');
@@ -1398,6 +1406,7 @@ export default function HomePage() {
                       <tr>
                         <th>Order ID</th>
                         <th>Customer</th>
+                        <th>Email</th>
                         <th>Model Name</th>
                         <th>Category</th>
                         <th>Purchase Age</th>
@@ -1411,6 +1420,7 @@ export default function HomePage() {
                             <span className="order-pill">{o.order_id}</span>
                           </td>
                           <td style={{ fontWeight: 600 }}>{o.customer}</td>
+                          <td style={{ fontSize: '12px', color: '#38bdf8' }}>{o.Email || o.email || '—'}</td>
                           <td>{o['Model Name'] || '—'}</td>
                           <td style={{ textTransform: 'capitalize' }}>
                             {o.product} ({o.category})
@@ -1629,6 +1639,17 @@ export default function HomePage() {
                   </div>
 
                   <div className="form-field-group">
+                    <label className="form-field-label">Customer Email</label>
+                    <input
+                      type="email"
+                      className="form-field-input"
+                      placeholder="e.g. sara@gmail.com"
+                      value={newCustomerEmail}
+                      onChange={(e) => setNewCustomerEmail(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-field-group">
                     <label className="form-field-label">Select Product Model</label>
                     <input
                       type="text"
@@ -1732,7 +1753,19 @@ export default function HomePage() {
                       className="form-field-input"
                       placeholder="e.g. ORD-101"
                       value={bankOrderId}
-                      onChange={(e) => setBankOrderId(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBankOrderId(val);
+                        const matched = orders.find(
+                          (o) => o.order_id.toLowerCase() === val.trim().toLowerCase()
+                        );
+                        if (matched) {
+                          if (matched.customer) setBankCustomer(matched.customer);
+                          if (matched['Model Name']) setBankProduct(matched['Model Name']);
+                          const ordEmail = matched.Email || matched.email;
+                          if (ordEmail) setBankEmail(ordEmail);
+                        }
+                      }}
                       required
                     />
                   </div>
@@ -2181,6 +2214,11 @@ export default function HomePage() {
                 <p>
                   <strong>Customer:</strong> {newCustomerName}
                 </p>
+                {newCustomerEmail && (
+                  <p>
+                    <strong>Email:</strong> {newCustomerEmail}
+                  </p>
+                )}
                 <p>
                   <strong>Product Model:</strong> {newProductModel}
                 </p>

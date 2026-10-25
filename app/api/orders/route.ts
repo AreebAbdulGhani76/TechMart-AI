@@ -13,12 +13,13 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { customer, model_name } = await req.json();
+    const { customer, model_name, email, customer_email } = await req.json();
     if (!customer || !model_name) {
       return NextResponse.json({ error: 'Customer name and product model are required.' }, { status: 400 });
     }
 
-    const newOrder = await createOrder(customer, model_name);
+    const userEmail = email || customer_email || '';
+    const newOrder = await createOrder(customer, model_name, userEmail);
     return NextResponse.json({ success: true, order: newOrder });
   } catch (err: any) {
     console.error('Orders POST API Error:', err);

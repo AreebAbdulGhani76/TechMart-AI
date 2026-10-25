@@ -274,11 +274,12 @@ def create_new_order(
     customer: str,
     model_name: str,
     product: Optional[str] = None,
-    category: Optional[str] = None
+    category: Optional[str] = None,
+    email: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Creates a new customer order and updates the live orders Google Sheet:
-    Columns: order_id, customer, Model Name, product, category, days_ago, Status
+    Columns: order_id, customer, Model Name, product, category, days_ago, Status, Email
     """
     order_id = get_next_order_id()
     prod_info = find_product_details_by_name(model_name)
@@ -287,6 +288,7 @@ def create_new_order(
     resolved_category = category or prod_info.get("category") or "electronics"
     price = prod_info.get("price", 0.0)
     stock = prod_info.get("stock", 0)
+    cust_email = str(email or "").strip()
 
     row_data = [
         str(order_id).strip(),
@@ -295,7 +297,8 @@ def create_new_order(
         str(resolved_product).strip(),
         str(resolved_category).strip(),
         "0",
-        "Order Placed"
+        "Order Placed",
+        cust_email
     ]
 
     session = get_authorized_session()
@@ -303,7 +306,7 @@ def create_new_order(
     error_msg = None
 
     if session:
-        append_url = f"https://sheets.googleapis.com/v4/spreadsheets/{ORDERS_SHEET_ID}/values/Sheet1!A:G:append?valueInputOption=USER_ENTERED"
+        append_url = f"https://sheets.googleapis.com/v4/spreadsheets/{ORDERS_SHEET_ID}/values/Sheet1!A:H:append?valueInputOption=USER_ENTERED"
         body = {"values": [row_data]}
         try:
             resp = session.post(append_url, json=body)
@@ -322,6 +325,7 @@ def create_new_order(
         "sheet_synced": sheet_synced,
         "order_id": order_id,
         "customer": customer,
+        "email": cust_email,
         "model_name": resolved_model,
         "product": resolved_product,
         "category": resolved_category,

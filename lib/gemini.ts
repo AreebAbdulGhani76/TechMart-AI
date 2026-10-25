@@ -71,6 +71,7 @@ CRITICAL: Do NOT check any past order from history and do NOT default to ORD-101
         orderRefundContext = `[VERIFIED ORDER & REFUND ASSESSMENT from Google Sheets]:
 Order ID: ${evalRes.order_id}
 Customer: ${evalRes.customer}
+Registered Email: ${evalRes.email || 'None recorded'}
 Product: ${evalRes.model_name}
 Purchase Age: ${evalRes.days_ago} days ago
 Allowed Return Window: ${evalRes.allowed_days} days (${evalRes.item_type})
@@ -105,6 +106,7 @@ CRITICAL: Do not invent details. Output the exact phrase:
       if (bData.account_number) {
         const oid = orderIdMatch[1].toUpperCase();
         const evalRes = await evaluateRefund(oid);
+        const effectiveCustomerEmail = bData.email || evalRes.email || undefined;
         const subRes = await submitBankDetails(
           oid,
           evalRes.customer || 'Customer',
@@ -112,7 +114,7 @@ CRITICAL: Do not invent details. Output the exact phrase:
           bData.bank_name || 'Bank',
           bData.account_number,
           bData.mobile_number || '',
-          bData.email || undefined
+          effectiveCustomerEmail
         );
         bankContext = `[LIVE BANK DETAILS RECORDED & REFUND APPROVED IN GOOGLE SHEETS]:
 Order ID: ${oid}
@@ -120,7 +122,7 @@ Customer: ${evalRes.customer}
 Bank: ${bData.bank_name}
 Account: ${bData.account_number}
 Mobile: ${bData.mobile_number}
-Google Sheets Write Status: SUCCESS (Status updated to 'Return Approved' in Sheet1, and interaction logged in Refund_Interactions tab)
+Google Sheets Write Status: SUCCESS (Status updated to 'Return Approved' in Sheet1, Column H Email synchronized, and interaction logged in Refund_Interactions tab)
 Automated Email Status: DISPATCHED to ${subRes.email} (Tracking Ref: ${subRes.email_reference})
 Refund Payout Schedule: 3-5 business days
 
@@ -147,7 +149,7 @@ REQUIRED RESPONSE:
 History: ${history.slice(-3).map(h => `${h.role}: ${h.content}`).join('\n')}
 Message: "${userMessage}"
 Return JSON:
-{"is_ordering": boolean, "product_model": string or null, "customer_name": string or null, "ready_to_place": boolean}`;
+{"is_ordering": boolean, "product_model": string or null, "customer_name": string or null, "email": string or null, "ready_to_place": boolean}`;
 
     try {
       const extRes = await orderExtractModel.generateContent(extractPrompt);
@@ -155,15 +157,16 @@ Return JSON:
       const oData = JSON.parse(cleanJson);
 
       if (oData.is_ordering && oData.ready_to_place && oData.customer_name && oData.product_model) {
-        newOrderCreated = await createOrder(oData.customer_name, oData.product_model);
+        newOrderCreated = await createOrder(oData.customer_name, oData.product_model, oData.email || undefined);
         orderPlacementContext = `[LIVE NEW ORDER CREATED & ADDED TO GOOGLE SHEETS]:
 - New Order ID: ${newOrderCreated.order_id}
 - Customer Name: ${newOrderCreated.customer}
+- Customer Email: ${newOrderCreated.email || 'Not provided'}
 - Model Name: ${newOrderCreated.model_name}
 - Product Category: ${newOrderCreated.category} (${newOrderCreated.product})
 - Price: $${newOrderCreated.price.toFixed(2)}
 - Current Status: ${newOrderCreated.status}
-- Google Sheets Sync: SUCCESS (Appended to live sheet)
+- Google Sheets Sync: SUCCESS (Appended to live sheet columns A:H including Email)
 
 REQUIRED RESPONSE:
 1. Warmly congratulate ${newOrderCreated.customer} on placing their new order!
@@ -173,7 +176,7 @@ REQUIRED RESPONSE:
         orderPlacementContext = `[CUSTOMER ORDER IN PROGRESS - NAME NEEDED]:
 The customer wants to purchase: ${oData.product_model}.
 REQUIRED RESPONSE:
-Confirm that this model is in our live catalog with its price. Politely ask for their full name to complete and record the order in our system right now!`;
+Confirm that this model is in our live catalog with its price. Politely ask for their full name and email to complete and record the order in our system right now!`;
       }
     } catch (err) {
       console.warn('Order intent extraction error:', err);
