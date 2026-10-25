@@ -56,7 +56,7 @@ async function dispatchEmail(options: {
 
   try {
     const gmailUser = (process.env.EMAIL_USER || process.env.GMAIL_USER || '').trim();
-    const gmailPass = (process.env.EMAIL_PASS || process.env.GMAIL_PASS || '').trim();
+    const gmailPass = (process.env.EMAIL_PASS || process.env.GMAIL_PASS || '').replace(/\s+/g, '').trim();
 
     // 1. Direct Gmail Service
     if (gmailUser && gmailPass) {
